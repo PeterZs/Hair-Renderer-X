@@ -127,9 +127,10 @@ void HairViewer::setup() {
     eyesMat->set_metalness(0.0f);
     eyesMat->set_roughness(0.1f);
     eyes->set_name("Eyes");
-    // head->add_child(eyes);
+    head->add_child(eyes);
     // head->add_child(hair);
     m_scene->add(hair);
+    // m_scene->add(head);
 #endif
 
     m_scene->set_ambient_color({0.05, 0.05, 0.05});
