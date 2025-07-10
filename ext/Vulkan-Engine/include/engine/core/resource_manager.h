@@ -41,11 +41,12 @@ class ResourceManager
     static Core::PanoramaConverterPass*  panoramaConverterPass;
     static Core::IrrandianceComputePass* irradianceComputePass;
     /*
-    Fallback Resources
+    Texture Resources
     */
-    static Core::Texture* FALLBACK_TEXTURE;
-    static Core::Texture* FALLBACK_CUBEMAP;
-    static Core::Texture* BLUE_NOISE_TEXTURE;
+    static Core::Texture*    FALLBACK_TEXTURE;
+    static Core::Texture*    FALLBACK_CUBEMAP;
+    static Core::Texture*    BLUE_NOISE_TEXTURE;
+    static Core::TextureHDR* HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE;
     /*
     Vignette for RTT
     */
@@ -59,10 +60,7 @@ class ResourceManager
     /*
     Global descriptor layouts uniforms buffer upload to GPU
     */
-    static void update_global_data(Graphics::Device* const device,
-                                   Graphics::Frame* const  currentFrame,
-                                   Core::Scene* const      scene,
-                                   Core::IWindow* const    window);
+    static void update_global_data(Graphics::Device* const device, Graphics::Frame* const currentFrame, Core::Scene* const scene, Core::IWindow* const window);
     /*
     Object descriptor layouts uniforms buffer upload to GPU
     */
@@ -79,8 +77,7 @@ class ResourceManager
     /*
     Upload geometry vertex buffers to the GPU
     */
-    static void
-    upload_geometry_data(Graphics::Device* const device, Core::Geometry* const g, bool createAccelStructure = true);
+    static void upload_geometry_data(Graphics::Device* const device, Core::Geometry* const g, bool createAccelStructure = true);
     static void destroy_geometry_data(Core::Geometry* const g);
     /*
     Setup skybox
@@ -93,7 +90,7 @@ class ResourceManager
     static void clean_scene(Core::Scene* const scene);
 };
 
-} // namespace Systems
+} // namespace Core
 
 VULKAN_ENGINE_NAMESPACE_END;
 

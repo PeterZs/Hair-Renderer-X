@@ -186,7 +186,7 @@ void GeometryPass::setup_shader_passes() {
     geomPass->build_shader_stages();
     geomPass->build(m_descriptorPool);
 
-    m_shaderPasses["geometry"] = geomPass;
+    m_shaderPasses[hash_string("geometry")] = geomPass;
 
     GraphicShaderPass* skyboxPass = new GraphicShaderPass(
         m_device->get_handle(), m_renderpass, m_imageExtent,  ENGINE_RESOURCES_PATH "shaders/deferred/skybox.glsl");
@@ -204,7 +204,7 @@ void GeometryPass::setup_shader_passes() {
     skyboxPass->build_shader_stages();
     skyboxPass->build(m_descriptorPool);
 
-    m_shaderPasses["skybox"] = skyboxPass;
+    m_shaderPasses[hash_string("skybox")] = skyboxPass;
 }
 void GeometryPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
     PROFILING_EVENT()
@@ -216,7 +216,7 @@ void GeometryPass::render(Graphics::Frame& currentFrame, Scene* const scene, uin
     if (scene->get_active_camera() && scene->get_active_camera()->is_active())
     {
 
-        ShaderPass* shaderPass = m_shaderPasses["geometry"];
+        ShaderPass* shaderPass = m_shaderPasses[hash_string("geometry")];
 
         unsigned int mesh_idx = 0;
         for (Mesh* m : scene->get_meshes())
@@ -273,7 +273,7 @@ void GeometryPass::render(Graphics::Frame& currentFrame, Scene* const scene, uin
                 cmd.set_depth_write_enable(true);
                 cmd.set_cull_mode(CullingMode::NO_CULLING);
 
-                ShaderPass* shaderPass = m_shaderPasses["skybox"];
+                ShaderPass* shaderPass = m_shaderPasses[hash_string("skybox")];
 
                 // Bind pipeline
                 cmd.bind_shaderpass(*shaderPass);

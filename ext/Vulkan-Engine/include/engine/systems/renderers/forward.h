@@ -5,6 +5,7 @@
 #include <engine/core/passes/forward_pass.h>
 #include <engine/core/passes/postprocess_pass.h>
 #include <engine/core/passes/variance_shadow_pass.h>
+#include <engine/core/passes/hair_scattering_pass.h>
 
 #include <engine/systems/renderers/renderer.h>
 
@@ -20,11 +21,12 @@ class ForwardRenderer : public BaseRenderer
 
     enum RendererPasses
     {
-        SHADOW_PASS     = 0,
-        FORWARD_PASS    = 1,
-        BLOOM_PASS      = 2,
-        TONEMAPPIN_PASS = 3,
-        FXAA_PASS       = 4,
+        SHADOW_PASS       = 0,
+        HAIR_SCATTER_PASS = 1,
+        FORWARD_PASS      = 2,
+        BLOOM_PASS        = 3,
+        TONEMAPPIN_PASS   = 4,
+        FXAA_PASS         = 5,
     };
 
     ShadowResolution m_shadowQuality = ShadowResolution::MEDIUM;
@@ -34,9 +36,7 @@ class ForwardRenderer : public BaseRenderer
     ForwardRenderer(Core::IWindow* window)
         : BaseRenderer(window) {
     }
-    ForwardRenderer(Core::IWindow*   window,
-                    ShadowResolution shadowQuality = ShadowResolution::MEDIUM,
-                    RendererSettings settings      = {})
+    ForwardRenderer(Core::IWindow* window, ShadowResolution shadowQuality = ShadowResolution::MEDIUM, RendererSettings settings = {})
         : BaseRenderer(window, settings)
         , m_shadowQuality(shadowQuality) {
     }

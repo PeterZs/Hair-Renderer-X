@@ -31,25 +31,37 @@ class IMaterial
 {
   protected:
     MaterialSettings        m_settings          = {};
-    std::string             m_shaderPassID      = {};
     Graphics::DescriptorSet m_textureDescriptor = {};
 
-    bool  m_isDirty  = true;
+    bool m_isDirty = true;
 
     friend class Renderer;
 
   public:
+    enum Type: uint32_t
+    {
+        UNLIT_TYPE     = 0,
+        PHONG_TYPE     = 1,
+        PBR_TYPE       = 2,
+        HAIR_STR_TYPE  = 3,
+        HAIR_CARD_TYPE = 4,
+    };
+
     static IMaterial* DEBUG_MATERIAL;
 
-    IMaterial(std::string shaderPassID)
-        : m_shaderPassID(shaderPassID) {
+    IMaterial(Type t)
+        : m_type(t) {
     }
-    IMaterial(std::string shaderPassID, MaterialSettings params)
-        : m_shaderPassID(shaderPassID)
+    IMaterial(Type t, MaterialSettings params)
+        : m_type(t)
         , m_settings(params) {
     }
 
     ~IMaterial() {
+    }
+
+    Type get_type() const {
+        return m_type;
     }
 
     virtual Graphics::MaterialUniforms get_uniforms() const = 0;
@@ -60,9 +72,6 @@ class IMaterial
 
     virtual void set_texture_binding_state(int id, bool state) = 0;
 
-    virtual std::string get_shaderpass_ID() const {
-        return m_shaderPassID;
-    }
     virtual inline MaterialSettings get_parameters() const {
         return m_settings;
     }
@@ -92,6 +101,9 @@ class IMaterial
     virtual inline Graphics::DescriptorSet& get_texture_descriptor() {
         return m_textureDescriptor;
     }
+
+  private:
+    Type m_type;
 };
 
 } // namespace Core

@@ -33,9 +33,12 @@ float bravaisIndex(float th, float ior) {
     return (sqrt(ior * ior - sinTheta * sinTheta) / cos(th));
 }
 
-//Gaussian for M term
-float g(float thH, float beta) {
-    return exp((-thH * thH) / (2.0 * beta * beta)) / (sqrt(2.0 * PI) * beta);
+//Gaussians
+float g(float x_mu, float sigma) {
+    return exp((-x_mu * x_mu) / (2.0 * sigma * sigma)) / (sqrt(2.0 * PI) * sigma);
+}
+vec3 g(float x_mu, vec3 sigma) {
+    return exp((-x_mu * x_mu) / (2.0 * sigma * sigma)) / (sqrt(2.0 * PI) * sigma);
 }
 
 //Schlick's approx
@@ -64,6 +67,116 @@ vec3 Ap(int p, float h, float ior, float thD, vec3 sigma_a) {
     return ((1 - f) * (1 - f)) * pow(f, p - 1) * pow(t, vec3(p));
 }
 
+//Local Scattering Lobe Std Dev (Dual-Scattering)
+vec3 computeBackStrDev(vec3 a_b, vec3 a_f, float beta_b, float beta_f) {
+
+   
+    float beta_f2 = beta_f * beta_f;
+    float beta_b2 = beta_b * beta_b;
+
+    vec3 a_b3 = a_b * a_b * a_b;
+
+    vec3 sqrtTerm = sqrt(2.0 * beta_f2 + beta_b2 + a_b3 * sqrt(2.0 * beta_f2 + 3.0 * beta_b2));
+    vec3 numerator = a_b * sqrtTerm;
+    vec3 denominator = a_b + a_b3 * (2.0 * beta_f + 3.0 * beta_b);
+    // denominator = max(denominator, vec3(1e-6));
+
+    vec3 sigma_b = (1.0 + 0.7 * a_f * a_f) * (numerator / denominator);
+    return sigma_b;
+}
+
+//Local Scattering Lobe Attenuation (Dual-Scattering)
+vec3 computeAb(vec3 a_b, vec3 a_f) {
+
+    vec3 afSqr = a_f * a_f;
+    vec3 oneMinusAfSqr = max(vec3(1.0) - afSqr, vec3(1e-6)); // Avoid divide-by-zero
+
+    vec3 abCubed = a_b * a_b * a_b;
+    
+    vec3 A1 = (a_b * afSqr) / oneMinusAfSqr;
+    vec3 A3 = (abCubed * afSqr) / (oneMinusAfSqr * oneMinusAfSqr * oneMinusAfSqr);
+    
+    vec3 Ab = A1 + A3;
+    return Ab;
+}
+
+float I_b(float phi){
+    return phi > (PI * 0.5) ? 1.0 : 0.0;
+}
+float I_f(float phi){
+    return phi < (PI * 0.5) ? 1.0 : 0.0;
+}
+
+vec3 evalDirectHairBSDF(
+    float thI,
+    float thR,
+    float phiD,
+    HairBSDF bsdf,
+    sampler3D DpTex,
+    bool r,
+    bool tt,
+    bool trt
+) {
+
+    //Theta Half
+    float thD = (thR - thI) * 0.5; //Theta Difference (0-90º)
+    float thH = (thR + thI) * 0.5; //Theta Half
+
+    //Betas & Shifts
+    vec3 betas = vec3(bsdf.beta, bsdf.beta * 0.5, bsdf.beta * 2.0);
+    vec3 shifts = vec3(bsdf.shift, -bsdf.shift * 0.5, -3.0 * bsdf.shift * 0.5);
+    float azBeta = bsdf.azBeta;
+
+    vec3 color = vec3(0.0);
+    vec3 direct = vec3(0.0);
+
+    //////////////////////////////////////////////////////////////////////////
+	// Direct Illumination
+	//////////////////////////////////////////////////////////////////////////
+
+    //Longitudinal
+    //-----------------------------------------------
+
+    float mR = g(thH - shifts.x, betas.x);
+    float mTT = g(thH - shifts.y, betas.y);
+    float mTRT = g(thH - shifts.z, betas.z);
+
+    //Azimuthal
+    //-----------------------------------------------
+
+    //Far-Field Distribution
+    //(phi between 0 and pi)
+    //(cos between 0 and 1)
+    vec3 Dp = texture(DpTex, vec3(phiD * ONE_OVER_PI, cos(thD), azBeta)).rgb;
+
+    // float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
+    float cosThetaD = cos(thI) * cos(thR) + sin(thI) * sin(thR) * cos(phiD);
+    float cosThetaH = sqrt(0.5 + 0.5 * cosThetaD); // same as sqrt((1 + dot)/2)
+    float aR = fresnel(bsdf.ior, cosThetaH);
+    vec3 nR = vec3(aR * Dp.x);
+
+    const float hTT = 0.0;
+    vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a);
+    vec3 nTT = aTT * Dp.y;
+
+    const float hTRT = sqrt(3.0) * 0.5;
+    vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a);
+    vec3 nTRT = aTRT * Dp.z;
+
+    // Sum lobes
+    //-----------------------------------------------
+
+    vec3 R = r ? mR * nR : vec3(0.0);
+    vec3 TT = tt ? mTT * nTT : vec3(0.0);
+    vec3 TRT = trt ? mTRT * nTRT : vec3(0.0);
+
+    direct = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
+
+    color += direct;
+    return color;
+
+}
+
 vec3 evalHairBSDF(
     vec3 wi,               //Light vector
     vec3 wr,               //View vector
@@ -73,8 +186,8 @@ vec3 evalHairBSDF(
     vec3 spread,
     float directFraction,
     sampler3D DpTex,
-    sampler2D attTex,
-    sampler2D NgTex,
+    sampler2D backAttTex,
+    sampler2D frontAttTex,
     bool r,
     bool tt,
     bool trt
@@ -97,7 +210,7 @@ vec3 evalHairBSDF(
     //Phi   
     vec3 azI = normalize(wi - sin_thI * u);
     vec3 azR = normalize(wr - sin_thR * u);
-    float cosPhi = dot(azI, azR) * inversesqrt(dot(azI, azI) * dot(azR, azR) + 1e-4); 
+    float cosPhi = dot(azI, azR) * inversesqrt(dot(azI, azI) * dot(azR, azR) + 1e-4);
     float phi = acos(cosPhi); //(0-180º)
 
     //Betas & Shifts
@@ -113,10 +226,35 @@ vec3 evalHairBSDF(
     vec3 SFront = vec3(0.0);
 
     //////////////////////////////////////////////////////////////////////////
-	// Local Scattering
+	// Local Scattering (Back)
 	//////////////////////////////////////////////////////////////////////////
 
-    // ..........
+    float idx_thI = thI * ONE_OVER_PI;
+    vec3 a_f = texture(frontAttTex, vec2(idx_thI, 0.5)).rgb;
+    vec3 a_b = texture(backAttTex,  vec2(idx_thI, 0.5)).rgb;
+
+    vec3 Ab = computeAb(a_b,a_f);
+    vec3 sigB = computeBackStrDev(a_b, a_f, betas[2], betas[1]);
+   
+    float cosThetaI = cos(thI);
+    float cos2ThetaI = cosThetaI * cosThetaI;
+    
+    float mu = thR + thI;
+    vec3 sigma2 = sigB * sigB;
+    vec3 Gb = g(mu,sigma2);
+
+    // G(x; σ²) = (1 / sqrt(2πσ²)) * exp( -x² / (2σ²) )
+    // vec3 normFactor = inversesqrt(2.0 * PI * sigma2);
+    // vec3 exponent   = - (mu * mu) / (2.0 * sigma2);
+    // vec3 gaussian   = normFactor * exp(exponent);
+
+    // Final lobe
+    SBack = (I_b(phi) / (PI * cos2ThetaI)) * bsdf.density * Ab * Gb;
+
+    //Questions ?
+    // DO WE REALLY NEED THE BINARY OPERATORS?
+    // CHECK HEMISPHERES ORIENTATION
+
 
     //////////////////////////////////////////////////////////////////////////
 	// Direct Illumination
@@ -135,7 +273,7 @@ vec3 evalHairBSDF(
     //Far-Field Distribution
     //(phi between 0 and pi)
     //(cos between 0 and 1)
-    vec3 Dp = texture(DpTex, vec3(phi * ONE_OVER_PI , cos(thD), azBeta )).rgb;
+    vec3 Dp = texture(DpTex, vec3(phi * ONE_OVER_PI, cos(thD), azBeta)).rgb;
     // vec3 Dp = texture(DpTex, vec2(phi * ONE_OVER_PI , cos(thD) )).rgb; 
 
     /*
@@ -145,6 +283,7 @@ vec3 evalHairBSDF(
     // Dp.x = 0.25 * sqrt(clamp(0.5 + 0.5 * cosPhi, 0.0, 1.0));
     // Dp.y = exp(-3.65 * cosPhi - 3.98);
     // Dp.z = exp(17 * cosPhi - 16.78);
+
 
     float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     vec3 nR = vec3(aR * Dp.x);
@@ -174,9 +313,8 @@ vec3 evalHairBSDF(
 
 	//////////////////////////////////////////////////////////////////////////
 
-    color += direct;
-     return color * li;
-
+    color += (direct + SBack) * directFraction;
+    return color * li;
 
     // if( phi * ONE_OVER_PI > 0.5) return vec3(1.0,0.0,0.0);
     //  if( phi * ONE_OVER_PI  < 0.0) return vec3(0.0,0.0,1.0);

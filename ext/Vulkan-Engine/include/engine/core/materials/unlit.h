@@ -29,12 +29,7 @@ class UnlitMaterial : public IMaterial
         COLOR = 0,
     };
 
-    std::unordered_map<int, ITexture*> m_textures{{COLOR, nullptr},
-                                                  {1, nullptr},
-                                                  {2, nullptr},
-                                                  {3, nullptr},
-                                                  {4, nullptr},
-                                                  {5, nullptr}};
+    std::unordered_map<int, ITexture*> m_textures{{COLOR, nullptr}, {1, nullptr}, {2, nullptr}, {3, nullptr}, {4, nullptr}, {5, nullptr}};
 
     std::unordered_map<int, bool> m_textureBindingState;
 
@@ -52,11 +47,11 @@ class UnlitMaterial : public IMaterial
 
   public:
     UnlitMaterial(glm::vec4 color = glm::vec4(1.0, 1.0, 0.5, 1.0))
-        : IMaterial("unlit")
+        : IMaterial(UNLIT_TYPE)
         , m_color(color) {
     }
     UnlitMaterial(glm::vec4 color, MaterialSettings params)
-        : IMaterial("unlit", params)
+        : IMaterial(UNLIT_TYPE, params)
         , m_color(color) {
     }
 

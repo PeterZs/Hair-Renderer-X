@@ -214,6 +214,13 @@ void log_available_gpus(std::multimap<int, VkPhysicalDevice> candidates);
 
 Vec3 get_tangent_gram_smidt(Vec3& p1, Vec3& p2, Vec3& p3, glm::vec2& uv1, glm::vec2& uv2, glm::vec2& uv3, Vec3 normal);
 
+#include <cstdint>
+#include <cstring>
+
+uint32_t murmur_hash3_32(const char* key, size_t len, uint32_t seed = 0) ;
+
+
+
 }; // namespace Utils
 } // namespace Graphics
 

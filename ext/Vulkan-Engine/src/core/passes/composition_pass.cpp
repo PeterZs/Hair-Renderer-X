@@ -153,7 +153,7 @@ void CompositionPass::setup_shader_passes() {
     compPass->build_shader_stages();
     compPass->build(m_descriptorPool);
 
-    m_shaderPasses["composition"] = compPass;
+    m_shaderPasses[hash_string("composition")] = compPass;
 }
 
 void CompositionPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -173,7 +173,7 @@ void CompositionPass::render(Graphics::Frame& currentFrame, Scene* const scene, 
     cmd.begin_renderpass(m_renderpass, m_framebuffers[0]);
     cmd.set_viewport(m_imageExtent);
 
-    ShaderPass* shaderPass = m_shaderPasses["composition"];
+    ShaderPass* shaderPass = m_shaderPasses[hash_string("composition")];
 
     cmd.bind_shaderpass(*shaderPass);
 

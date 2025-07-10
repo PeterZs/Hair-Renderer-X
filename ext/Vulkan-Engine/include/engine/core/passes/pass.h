@@ -42,7 +42,7 @@ class BasePass
     // Graphic Objects
     Graphics::Device*                                          m_device         = nullptr;
     Graphics::DescriptorPool                                   m_descriptorPool = {};
-    std::unordered_map<std::string, Graphics::BaseShaderPass*> m_shaderPasses;
+    std::unordered_map<uint32_t, Graphics::BaseShaderPass*> m_shaderPasses;
     // In case it is a graphical pass ... which is the most usual
     Graphics::RenderPass               m_renderpass = {};
     std::vector<Graphics::Framebuffer> m_framebuffers;
@@ -62,11 +62,14 @@ class BasePass
     bool m_isDefault    = false;
     bool m_isGraphical  = true;
 
-    virtual void
-                 setup_attachments(std::vector<Graphics::AttachmentInfo>&    attachments,
+    virtual void setup_attachments(std::vector<Graphics::AttachmentInfo>&    attachments,
                                    std::vector<Graphics::SubPassDependency>& dependencies) = 0; // Only for graphical renderpasses
-    virtual void setup_uniforms(std::vector<Graphics::Frame>& frames) = 0;
-    virtual void setup_shader_passes()                                = 0;
+    virtual void setup_uniforms(std::vector<Graphics::Frame>& frames)                      = 0;
+    virtual void setup_shader_passes()                                                     = 0;
+
+    inline uint32_t hash_string(const std::string& key) {
+        return Graphics::Utils::murmur_hash3_32(key.c_str(), key.size());
+    }
 
   public:
     BasePass(Graphics::Device* ctx,
@@ -79,8 +82,7 @@ class BasePass
         , m_framebufferImageDepth(framebufferDepth)
         , m_isDefault(isDefault)
         , m_name(name) {
-        !isDefault ? m_framebuffers.resize(framebufferCount)
-                   : m_framebuffers.resize(m_device->get_swapchain().get_present_images().size());
+        !isDefault ? m_framebuffers.resize(framebufferCount) : m_framebuffers.resize(m_device->get_swapchain().get_present_images().size());
         m_imageExtent = extent;
     }
 
@@ -130,7 +132,7 @@ class BasePass
         return m_isGraphical;
     }
 
-    inline std::unordered_map<std::string, Graphics::ShaderPass*> const get_shaderpasses() const {
+    inline std::unordered_map<uint32_t, Graphics::ShaderPass*> const get_shaderpasses() const {
         return m_shaderPasses;
     }
 

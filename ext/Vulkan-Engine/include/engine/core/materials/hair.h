@@ -43,18 +43,15 @@ class HairMaterial : public IMaterial
     bool m_useScatter      = false;
     bool m_usePigmentation = true;
 
-    enum Textures
-    {
-        Dp       = 0,
-        AttFront = 1,
-        AttBack  = 2,
-        Ng       = 3,
-    };
+    // enum Textures
+    // {
+    //     Dp       = 0,
+    //     AttFront = 1,
+    //     AttBack  = 2,
+    //     Ng       = 3,
+    // };
 
-    std::unordered_map<int, ITexture*> m_textures{{Dp, nullptr},
-                                                  {AttFront, nullptr},
-                                                  {AttBack, nullptr},
-                                                  {Ng, nullptr}};
+    std::unordered_map<int, ITexture*> m_textures;
     std::unordered_map<int, bool>      m_textureBindingState;
 
     virtual Graphics::MaterialUniforms                get_uniforms() const;
@@ -69,11 +66,7 @@ class HairMaterial : public IMaterial
         m_textureBindingState[id] = state;
     }
 
-    HairMaterial(float eumelanine, float pheomelanine, MaterialSettings params, std::string shaderPassID)
-        : IMaterial(shaderPassID, params)
-        , m_eumelanine(eumelanine)
-        , m_pheomelanine(pheomelanine) {
-    }
+  
 
     inline void compute_sigma_a() {
 
@@ -87,36 +80,34 @@ class HairMaterial : public IMaterial
 
   public:
     HairMaterial(float eumelanine = 1.3f, float pheomelanine = 0.2f)
-        : IMaterial("hairstr2")
+        : IMaterial(HAIR_STR_TYPE)
         , m_eumelanine(eumelanine)
         , m_pheomelanine(pheomelanine) {
         compute_sigma_a();
-        TextureSettings settings{};
-        settings.useMipmaps = false;
-        settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
-        m_textures[Dp]      = new TextureHDR(settings);
+        // TextureSettings settings{};
+        // settings.useMipmaps = false;
+        // settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
+        // m_textures[Dp]      = new TextureHDR(settings);
 
-        // Tools::Loaders::load_texture(
-        //     m_textures[Dp], ENGINE_RESOURCES_PATH "textures/DpFix.hdr", TEXTURE_FORMAT_TYPE_NORMAL, false);
 
-        Tools::Loaders::load_3D_texture(m_textures[Dp], ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
+        // Tools::Loaders::load_3D_texture(m_textures[Dp], ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
 
-        m_textureBindingState[Dp] = false;
+        // m_textureBindingState[Dp] = false;
         m_isDirty                 = true;
     }
     HairMaterial(float eumelanine, float pheomelanine, MaterialSettings params)
-        : IMaterial("hairstr2", params)
+        : IMaterial(HAIR_STR_TYPE, params)
         , m_eumelanine(eumelanine)
         , m_pheomelanine(pheomelanine) {
         compute_sigma_a();
 
-        TextureSettings settings{};
-        settings.useMipmaps = false;
-        settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
-        m_textures[Dp]      = new Texture(settings);
+        // TextureSettings settings{};
+        // settings.useMipmaps = false;
+        // settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
+        // m_textures[Dp]      = new Texture(settings);
 
-        Tools::Loaders::load_texture(m_textures[Dp], ENGINE_RESOURCES_PATH "Dp.hdr", TEXTURE_FORMAT_TYPE_NORMAL, false);
-        m_textureBindingState[Dp] = false;
+        // Tools::Loaders::load_texture(m_textures[Dp], ENGINE_RESOURCES_PATH "Dp.hdr", TEXTURE_FORMAT_TYPE_NORMAL, false);
+        // m_textureBindingState[Dp] = false;
         m_isDirty                 = true;
     }
 

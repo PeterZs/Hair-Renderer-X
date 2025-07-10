@@ -37,20 +37,14 @@ class ForwardPass : public GraphicPass
     void setup_material_descriptor(IMaterial* mat);
 
   public:
-    ForwardPass(Graphics::Device* ctx,
-                Extent2D          extent,
-                ColorFormatType   colorFormat,
-                ColorFormatType   depthFormat,
-                MSAASamples       samples,
-                bool              isDefault = true)
-        : BasePass(ctx, extent, 1,1, isDefault, "FORWARD")
+    ForwardPass(Graphics::Device* ctx, Extent2D extent, ColorFormatType colorFormat, ColorFormatType depthFormat, MSAASamples samples, bool isDefault = true)
+        : BasePass(ctx, extent, 1, 1, isDefault, "FORWARD")
         , m_colorFormat(colorFormat)
         , m_depthFormat(depthFormat)
         , m_aa(samples) {
     }
 
-    void setup_attachments(std::vector<Graphics::AttachmentInfo>&    attachments,
-                           std::vector<Graphics::SubPassDependency>& dependencies);
+    void setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies);
 
     void setup_uniforms(std::vector<Graphics::Frame>& frames);
 
@@ -63,6 +57,8 @@ class ForwardPass : public GraphicPass
     void link_previous_images(std::vector<Graphics::Image> images);
 
     void set_envmap_descriptor(Graphics::Image env, Graphics::Image irr);
+
+    void set_hair_scattering_map_descriptor(Graphics::Image frontAtt, Graphics::Image backAtt);
 };
 
 } // namespace Core

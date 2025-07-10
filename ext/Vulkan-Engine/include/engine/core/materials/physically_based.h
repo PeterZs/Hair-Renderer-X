@@ -84,11 +84,11 @@ class PhysicallyBasedMaterial : public IMaterial
         return m_textures;
     }
     PhysicallyBasedMaterial(Vec4 albedo = Vec4(1.0f, 1.0f, 0.5f, 1.0f))
-        : IMaterial("physical")
+        : IMaterial(PBR_TYPE)
         , m_albedo(albedo) {
     }
     PhysicallyBasedMaterial(Vec4 albedo, MaterialSettings params)
-        : IMaterial("physical", params)
+        : IMaterial(PBR_TYPE, params)
         , m_albedo(albedo) {
     }
 

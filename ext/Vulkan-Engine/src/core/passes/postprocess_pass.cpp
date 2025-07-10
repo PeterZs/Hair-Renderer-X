@@ -72,7 +72,7 @@ void PostProcessPass::setup_shader_passes() {
     ppPass->build_shader_stages();
     ppPass->build(m_descriptorPool);
 
-    m_shaderPasses["pp"] = ppPass;
+    m_shaderPasses[0] = ppPass;
 }
 
 void PostProcessPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -81,7 +81,7 @@ void PostProcessPass::render(Graphics::Frame& currentFrame, Scene* const scene, 
     cmd.begin_renderpass(m_renderpass, m_framebuffers[m_isDefault ? presentImageIndex : 0]);
     cmd.set_viewport(m_imageExtent);
 
-    ShaderPass* shaderPass = m_shaderPasses["pp"];
+    ShaderPass* shaderPass = m_shaderPasses[0];
 
     cmd.bind_shaderpass(*shaderPass);
     cmd.bind_descriptor_set(m_imageDescriptorSet, 0, *shaderPass);

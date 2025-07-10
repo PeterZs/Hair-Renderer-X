@@ -132,6 +132,9 @@ layout(location = 8) in vec3 g_origin;
 //Uniforms
 layout(set = 0, binding = 2) uniform sampler2DArray shadowMap;
 layout(set = 0, binding = 4) uniform samplerCube irradianceMap;
+layout(set = 0, binding = 7) uniform sampler3D DpTex;
+layout(set = 0, binding = 8) uniform sampler2D attTexFront;
+layout(set = 0, binding = 9) uniform sampler2D attTexBack;
 
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
@@ -155,10 +158,10 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
 
 } material;
 
-layout(set = 2, binding = 0) uniform sampler3D DpTex;
-layout(set = 2, binding = 1) uniform sampler2D attTexFront;
-layout(set = 2, binding = 2) uniform sampler2D attTexBack;
-layout(set = 2, binding = 3) uniform sampler2D Ng;
+// layout(set = 2, binding = 0) uniform sampler3D DpTex;
+// layout(set = 2, binding = 1) uniform sampler2D attTexFront;
+// layout(set = 2, binding = 2) uniform sampler2D attTexBack;
+// layout(set = 2, binding = 3) uniform sampler2D Ng;
 
 HairBSDF bsdf;
 

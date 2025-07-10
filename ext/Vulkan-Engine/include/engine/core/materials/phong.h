@@ -62,11 +62,11 @@ class PhongMaterial : public IMaterial
 
   public:
     PhongMaterial(Vec4 color = Vec4(1.0, 1.0, 0.5, 1.0))
-        : IMaterial("phong")
+        : IMaterial(PHONG_TYPE)
         , m_color(color) {
     }
     PhongMaterial(Vec4 color, MaterialSettings params)
-        : IMaterial("phong", params)
+        : IMaterial(PHONG_TYPE, params)
         , m_color(color) {
     }
 

@@ -77,7 +77,7 @@ void BloomPass::setup_shader_passes() {
     downsamplePass->build_shader_stages();
     downsamplePass->build(m_descriptorPool);
 
-    m_shaderPasses["downsample"] = downsamplePass;
+    m_shaderPasses[hash_string("downsample")] = downsamplePass;
 
     ComputeShaderPass* upsamplePass =
         new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/compute/upsample.glsl");
@@ -87,7 +87,7 @@ void BloomPass::setup_shader_passes() {
     upsamplePass->build_shader_stages();
     upsamplePass->build(m_descriptorPool);
 
-    m_shaderPasses["upsample"] = upsamplePass;
+    m_shaderPasses[hash_string("upsample")] = upsamplePass;
 
     GraphicShaderPass* bloomPass = new GraphicShaderPass(
         m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/misc/bloom.glsl");
@@ -102,7 +102,7 @@ void BloomPass::setup_shader_passes() {
     bloomPass->build_shader_stages();
     bloomPass->build(m_descriptorPool);
 
-    m_shaderPasses["bloom"] = bloomPass;
+    m_shaderPasses[hash_string("bloom")] = bloomPass;
 }
 
 void BloomPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -143,7 +143,7 @@ void BloomPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32
     ////////////////////////////////////////////////////////////
     // DOWNSAMPLE
     ////////////////////////////////////////////////////////////
-    ShaderPass* downSamplePass = m_shaderPasses["downsample"];
+    ShaderPass* downSamplePass = m_shaderPasses[hash_string("downsample")];
     cmd.bind_shaderpass(*downSamplePass);
 
     for (uint32_t i = 1; i < MIPMAP_LEVELS; i++)
@@ -182,7 +182,7 @@ void BloomPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32
     ////////////////////////////////////////////////////////////
     // UPSAMPLE
     ////////////////////////////////////////////////////////////
-    ShaderPass* upSamplePass = m_shaderPasses["upsample"];
+    ShaderPass* upSamplePass = m_shaderPasses[hash_string("upsample")];
     cmd.bind_shaderpass(*upSamplePass);
 
     for (int32_t i = MIPMAP_LEVELS - 1; i > 0; i--)
@@ -231,7 +231,7 @@ void BloomPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32
 ////////////////////////////////////////////////////////////
 paintBloom:
 
-    ShaderPass* shaderPass = m_shaderPasses["bloom"];
+    ShaderPass* shaderPass = m_shaderPasses[hash_string("bloom")];
     Geometry*   g          = m_vignette->get_geometry();
 
     cmd = currentFrame.commandBuffer;

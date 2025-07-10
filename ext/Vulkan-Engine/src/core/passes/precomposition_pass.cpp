@@ -147,7 +147,7 @@ void PreCompositionPass::setup_shader_passes() {
 
     compPass->build_shader_stages();
     compPass->build(m_descriptorPool);
-    m_shaderPasses["pre"] = compPass;
+    m_shaderPasses[0] = compPass;
 
     GraphicShaderPass* blurPass = new GraphicShaderPass(
         m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/misc/box_filter.glsl");
@@ -162,7 +162,7 @@ void PreCompositionPass::setup_shader_passes() {
 
     blurPass->build_shader_stages();
     blurPass->build(m_descriptorPool);
-    m_shaderPasses["blur"] = blurPass;
+    m_shaderPasses[1] = blurPass;
 }
 
 void PreCompositionPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -172,7 +172,7 @@ void PreCompositionPass::render(Graphics::Frame& currentFrame, Scene* const scen
     cmd.begin_renderpass(m_renderpass, m_framebuffers[0]);
     cmd.set_viewport(m_imageExtent);
 
-    ShaderPass* shaderPass = m_shaderPasses["pre"];
+    ShaderPass* shaderPass = m_shaderPasses[0];
 
     cmd.bind_shaderpass(*shaderPass);
 
@@ -191,7 +191,7 @@ void PreCompositionPass::render(Graphics::Frame& currentFrame, Scene* const scen
     cmd.begin_renderpass(m_renderpass, m_framebuffers[1]);
     cmd.set_viewport(m_imageExtent);
 
-    shaderPass = m_shaderPasses["blur"];
+    shaderPass = m_shaderPasses[1];
 
     cmd.bind_shaderpass(*shaderPass);
 

@@ -7,10 +7,11 @@ namespace Core {
 Core::PanoramaConverterPass*  ResourceManager::panoramaConverterPass = nullptr;
 Core::IrrandianceComputePass* ResourceManager::irradianceComputePass = nullptr;
 
-Core::Texture* ResourceManager::FALLBACK_TEXTURE   = nullptr;
-Core::Texture* ResourceManager::FALLBACK_CUBEMAP   = nullptr;
-Core::Texture* ResourceManager::BLUE_NOISE_TEXTURE = nullptr;
-Core::Mesh*    ResourceManager::VIGNETTE           = nullptr;
+Core::Texture*    ResourceManager::FALLBACK_TEXTURE                     = nullptr;
+Core::Texture*    ResourceManager::FALLBACK_CUBEMAP                     = nullptr;
+Core::Texture*    ResourceManager::BLUE_NOISE_TEXTURE                   = nullptr;
+Core::TextureHDR* ResourceManager::HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE = nullptr;
+Core::Mesh*       ResourceManager::VIGNETTE                             = nullptr;
 
 void ResourceManager::init_basic_resources(Graphics::Device* const device) {
 
@@ -40,10 +41,22 @@ void ResourceManager::init_basic_resources(Graphics::Device* const device) {
     if (!BLUE_NOISE_TEXTURE) // If not user set
     {
         BLUE_NOISE_TEXTURE = new Core::Texture();
-        Tools::Loaders::load_PNG(BLUE_NOISE_TEXTURE, ENGINE_RESOURCES_PATH "textures/blueNoise.png",TEXTURE_FORMAT_TYPE_NORMAL);
+        Tools::Loaders::load_PNG(BLUE_NOISE_TEXTURE, ENGINE_RESOURCES_PATH "textures/blueNoise.png", TEXTURE_FORMAT_TYPE_NORMAL);
         BLUE_NOISE_TEXTURE->set_use_mipmaps(false);
     }
     upload_texture_data(device, BLUE_NOISE_TEXTURE);
+
+    // Setup blue noise texture
+    if (!HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE) // If not user set
+    {
+        TextureSettings settings{};
+        settings.useMipmaps                  = false;
+        settings.adressMode                  = ADDRESS_MODE_CLAMP_TO_BORDER;
+        HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE = new TextureHDR(settings);
+
+        Tools::Loaders::load_3D_texture(HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE, ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
+    }
+    upload_texture_data(device, HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE);
 }
 
 void ResourceManager::clean_basic_resources() {
@@ -51,6 +64,8 @@ void ResourceManager::clean_basic_resources() {
     destroy_texture_data(FALLBACK_TEXTURE);
     destroy_texture_data(BLUE_NOISE_TEXTURE);
     destroy_texture_data(FALLBACK_CUBEMAP);
+    destroy_texture_data(HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE);
+    
     if (irradianceComputePass)
     {
         irradianceComputePass->clean_framebuffer();
@@ -113,8 +128,7 @@ void ResourceManager::update_global_data(Graphics::Device* const device,
     SCENE UNIFORMS LOAD
     */
     Graphics::SceneUniforms sceneParams;
-    sceneParams.fogParams = {
-        camera->get_near(), camera->get_far(), scene->get_fog_intensity(), scene->is_fog_enabled()};
+    sceneParams.fogParams       = {camera->get_near(), camera->get_far(), scene->get_fog_intensity(), scene->is_fog_enabled()};
     sceneParams.fogColorAndSSAO = Vec4(scene->get_fog_color(), 0.0f);
     sceneParams.SSAOtype        = 0;
     sceneParams.emphasizeAO     = false;
@@ -130,8 +144,7 @@ void ResourceManager::update_global_data(Graphics::Device* const device,
     std::vector<Core::Light*> lights = scene->get_lights();
     if (lights.size() > ENGINE_MAX_LIGHTS)
         std::sort(lights.begin(), lights.end(), [=](Core::Light* a, Core::Light* b) {
-            return math::length(a->get_position() - camera->get_position()) <
-                   math::length(b->get_position() - camera->get_position());
+            return math::length(a->get_position() - camera->get_position()) < math::length(b->get_position() - camera->get_position());
         });
 
     size_t lightIdx{0};
@@ -140,9 +153,8 @@ void ResourceManager::update_global_data(Graphics::Device* const device,
         if (l->is_active())
         {
             sceneParams.lightUniforms[lightIdx] = l->get_uniforms(camera->get_view());
-            Mat4 depthProjectionMatrix =
-                math::perspective(math::radians(l->get_shadow_fov()), 1.0f, l->get_shadow_near(), l->get_shadow_far());
-            Mat4 depthViewMatrix = math::lookAt(l->get_position(), l->get_shadow_target(), Vec3(0, 1, 0));
+            Mat4 depthProjectionMatrix          = math::perspective(math::radians(l->get_shadow_fov()), 1.0f, l->get_shadow_near(), l->get_shadow_far());
+            Mat4 depthViewMatrix                = math::lookAt(l->get_position(), l->get_shadow_target(), Vec3(0, 1, 0));
             sceneParams.lightUniforms[lightIdx].viewProj = depthProjectionMatrix * depthViewMatrix;
             lightIdx++;
         }
@@ -152,9 +164,7 @@ void ResourceManager::update_global_data(Graphics::Device* const device,
     sceneParams.numLights = static_cast<int>(lights.size());
 
     currentFrame->uniformBuffers[GLOBAL_LAYOUT].upload_data(
-        &sceneParams,
-        sizeof(Graphics::SceneUniforms),
-        device->pad_uniform_buffer_size(sizeof(Graphics::CameraUniforms)));
+        &sceneParams, sizeof(Graphics::SceneUniforms), device->pad_uniform_buffer_size(sizeof(Graphics::CameraUniforms)));
 
     /*
     SKYBOX MESH AND TEXTURE UPLOAD
@@ -187,8 +197,7 @@ void ResourceManager::update_object_data(Graphics::Device* const device,
             std::map<float, Core::Mesh*> sorted;
             for (unsigned int i = 0; i < blendMeshes.size(); i++)
             {
-                float distance =
-                    glm::distance(scene->get_active_camera()->get_position(), blendMeshes[i]->get_position());
+                float distance   = glm::distance(scene->get_active_camera()->get_position(), blendMeshes[i]->get_position());
                 sorted[distance] = blendMeshes[i];
             }
 
@@ -207,10 +216,9 @@ void ResourceManager::update_object_data(Graphics::Device* const device,
         {
             if (m) // If mesh exists
             {
-                if (m->is_active() &&              // Check if is active
-                    m->get_num_geometries() > 0 && // Check if has geometry
-                    m->get_bounding_volume()->is_on_frustrum(
-                        scene->get_active_camera()->get_frustrum())) // Check if is inside frustrum
+                if (m->is_active() &&                                                                     // Check if is active
+                    m->get_num_geometries() > 0 &&                                                        // Check if has geometry
+                    m->get_bounding_volume()->is_on_frustrum(scene->get_active_camera()->get_frustrum())) // Check if is inside frustrum
                 {
                     // Offset calculation
                     uint32_t objectOffset = currentFrame->uniformBuffers[OBJECT_LAYOUT].strideSize * mesh_idx;
@@ -219,8 +227,7 @@ void ResourceManager::update_object_data(Graphics::Device* const device,
                     objectData.model        = m->get_model_matrix();
                     objectData.otherParams1 = {m->affected_by_fog(), m->receive_shadows(), m->cast_shadows(), false};
                     objectData.otherParams2 = {m->is_selected(), m->get_bounding_volume()->center};
-                    currentFrame->uniformBuffers[OBJECT_LAYOUT].upload_data(
-                        &objectData, sizeof(Graphics::ObjectUniforms), objectOffset);
+                    currentFrame->uniformBuffers[OBJECT_LAYOUT].upload_data(&objectData, sizeof(Graphics::ObjectUniforms), objectOffset);
 
                     for (size_t i = 0; i < m->get_num_geometries(); i++)
                     {
@@ -288,12 +295,11 @@ void ResourceManager::upload_texture_data(Graphics::Device* const device, Core::
             samplerConfig.maxLod                  = textSettings.maxMipLevel;
             samplerConfig.minLod                  = textSettings.minMipLevel;
             samplerConfig.samplerAddressMode      = textSettings.adressMode;
-            samplerConfig.border      = BorderColor::FLOAT_OPAQUE_BLACK;
+            samplerConfig.border                  = BorderColor::FLOAT_OPAQUE_BLACK;
 
             void* imgCache{nullptr};
             t->get_image_cache(imgCache);
-            device->upload_texture_image(
-                *get_image(t), config, samplerConfig, imgCache, t->get_bytes_per_pixel(), t->get_settings().useMipmaps);
+            device->upload_texture_image(*get_image(t), config, samplerConfig, imgCache, t->get_bytes_per_pixel(), t->get_settings().useMipmaps);
         }
     }
 }
@@ -302,9 +308,7 @@ void ResourceManager::destroy_texture_data(Core::ITexture* const t) {
     if (t)
         get_image(t)->cleanup();
 }
-void ResourceManager::upload_geometry_data(Graphics::Device* const device,
-                                           Core::Geometry* const   g,
-                                           bool                    createAccelStructure) {
+void ResourceManager::upload_geometry_data(Graphics::Device* const device, Core::Geometry* const g, bool createAccelStructure) {
     PROFILING_EVENT()
     /*
     VERTEX ARRAYS
@@ -320,8 +324,7 @@ void ResourceManager::upload_geometry_data(Graphics::Device* const device,
         rd->vertexCount                      = gd->vertexData.size();
         rd->voxelCount                       = gd->voxelData.size();
 
-        device->upload_vertex_arrays(
-            *rd, vboSize, gd->vertexData.data(), iboSize, gd->vertexIndex.data(), voxelSize, gd->voxelData.data());
+        device->upload_vertex_arrays(*rd, vboSize, gd->vertexData.data(), iboSize, gd->vertexIndex.data(), voxelSize, gd->voxelData.data());
     }
     /*
     ACCELERATION STRUCTURE
@@ -369,8 +372,7 @@ void ResourceManager::setup_skybox(Graphics::Device* const device, Core::Scene* 
 
                     void* imgCache{nullptr};
                     envMap->get_image_cache(imgCache);
-                    device->upload_texture_image(
-                        *get_image(envMap), config, samplerConfig, imgCache, envMap->get_bytes_per_pixel(), false);
+                    device->upload_texture_image(*get_image(envMap), config, samplerConfig, imgCache, envMap->get_bytes_per_pixel(), false);
                 }
                 // Create Panorama converter pass
                 if (panoramaConverterPass)
@@ -383,18 +385,13 @@ void ResourceManager::setup_skybox(Graphics::Device* const device, Core::Scene* 
                     delete irradianceComputePass;
                 }
                 panoramaConverterPass =
-                    new Core::PanoramaConverterPass(device,
-                                                    envMap->get_settings().format,
-                                                    {envMap->get_size().height, envMap->get_size().height},
-                                                    VIGNETTE);
+                    new Core::PanoramaConverterPass(device, envMap->get_settings().format, {envMap->get_size().height, envMap->get_size().height}, VIGNETTE);
                 std::vector<Graphics::Frame> empty;
                 panoramaConverterPass->setup(empty);
                 panoramaConverterPass->update_uniforms(0, scene);
                 // Create Irradiance converter pass
                 irradianceComputePass = new Core::IrrandianceComputePass(
-                    device,
-                    envMap->get_settings().format,
-                    {skybox->get_irradiance_resolution(), skybox->get_irradiance_resolution()});
+                    device, envMap->get_settings().format, {skybox->get_irradiance_resolution(), skybox->get_irradiance_resolution()});
                 irradianceComputePass->setup(empty);
                 irradianceComputePass->update_uniforms(0, scene);
                 irradianceComputePass->connect_env_cubemap(panoramaConverterPass->get_framebuffers()[0].attachmentImages[0]);

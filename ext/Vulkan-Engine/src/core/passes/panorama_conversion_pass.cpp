@@ -52,7 +52,7 @@ void PanoramaConverterPass::setup_shader_passes() {
     converterPass->build_shader_stages();
     converterPass->build(m_descriptorPool);
 
-    m_shaderPasses["converter"] = converterPass;
+    m_shaderPasses[0] = converterPass;
 }
 
 void PanoramaConverterPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -61,7 +61,7 @@ void PanoramaConverterPass::render(Graphics::Frame& currentFrame, Scene* const s
     cmd.begin_renderpass(m_renderpass, m_framebuffers[0]);
     cmd.set_viewport(m_imageExtent);
 
-    ShaderPass* shaderPass = m_shaderPasses["converter"];
+    ShaderPass* shaderPass = m_shaderPasses[0];
     cmd.bind_shaderpass(*shaderPass);
     cmd.bind_descriptor_set(m_panoramaDescriptorSet, 0, *shaderPass);
 
