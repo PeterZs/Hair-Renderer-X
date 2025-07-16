@@ -56,7 +56,7 @@ Geometry *Mesh::change_geometry(Geometry *g, size_t id)
 {
     if (m_geometry.size() < id + 1)
     {
-        ERR_LOG("Not enough geometry slots");
+        LOG_ERROR("Not enough geometry slots");
         return nullptr;
     }
     Geometry *old_g = m_geometry[id];
@@ -67,7 +67,7 @@ IMaterial *Mesh::change_material(IMaterial *m, size_t id)
 {
     if (m_material.size() < id + 1)
     {
-        ERR_LOG("Not enough material slots");
+        LOG_ERROR("Not enough material slots");
         return nullptr;
     }
 

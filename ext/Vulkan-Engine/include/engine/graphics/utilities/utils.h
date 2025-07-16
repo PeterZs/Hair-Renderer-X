@@ -194,7 +194,7 @@ inline static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSe
                                                            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                            void*                                       pUserData) {
 
-    std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+    LOG_DEBUG(Logger::format_with_tag("[Validation Layer]", "\033[34m", pCallbackData->pMessage));
 
     return VK_FALSE;
 }
@@ -204,9 +204,7 @@ VkResult create_debug_utils_messenger_EXT(VkInstance                            
                                           const VkAllocationCallbacks*              pAllocator,
                                           VkDebugUtilsMessengerEXT*                 pDebugMessenger);
 
-void destroy_debug_utils_messenger_EXT(VkInstance                   instance,
-                                       VkDebugUtilsMessengerEXT     debugMessenger,
-                                       const VkAllocationCallbacks* pAllocator);
+void destroy_debug_utils_messenger_EXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
 void log_available_extensions(std::vector<VkExtensionProperties> ext);
 
@@ -217,9 +215,7 @@ Vec3 get_tangent_gram_smidt(Vec3& p1, Vec3& p2, Vec3& p3, glm::vec2& uv1, glm::v
 #include <cstdint>
 #include <cstring>
 
-uint32_t murmur_hash3_32(const char* key, size_t len, uint32_t seed = 0) ;
-
-
+uint32_t murmur_hash3_32(const char* key, size_t len, uint32_t seed = 0);
 
 }; // namespace Utils
 } // namespace Graphics

@@ -22,6 +22,7 @@ class HairScatteringPass : public ComputePass
   public:
     HairScatteringPass(Graphics::Device* ctx, uint32_t extent)
         : BasePass(ctx, {extent, extent}, 1, 1, false, "HAIR SCATTERING") {
+            
     }
 
     void setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies);

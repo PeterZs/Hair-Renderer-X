@@ -5,25 +5,26 @@ using namespace Graphics;
 namespace Core {
 
 void HairScatteringPass::create_hair_scattering_images() {
-    m_backAtt.cleanup();
+    ResourceManager::HAIR_BACK_ATT.cleanup();
 
+    
     ImageConfig config = {};
     config.viewType    = TEXTURE_2D;
     config.format      = SRGBA_32F;
     config.usageFlags  = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
     config.mipLevels   = 1;
-    m_backAtt          = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
-    m_backAtt.create_view(config);
+    ResourceManager::HAIR_BACK_ATT          = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
+    ResourceManager::HAIR_BACK_ATT.create_view(config);
 
     SamplerConfig samplerConfig      = {};
     samplerConfig.samplerAddressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerConfig.border             = BorderColor::FLOAT_OPAQUE_BLACK;
-    m_backAtt.create_sampler(samplerConfig);
+    ResourceManager::HAIR_BACK_ATT.create_sampler(samplerConfig);
 
-    m_frontAtt.cleanup();
-    m_frontAtt = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
-    m_frontAtt.create_view(config);
-    m_frontAtt.create_sampler(samplerConfig);
+    ResourceManager::HAIR_FRONT_ATT.cleanup();
+    ResourceManager::HAIR_FRONT_ATT = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
+    ResourceManager::HAIR_FRONT_ATT.create_view(config);
+    ResourceManager::HAIR_FRONT_ATT.create_sampler(samplerConfig);
 }
 void HairScatteringPass::setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies) {
     create_hair_scattering_images();
@@ -47,10 +48,10 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
     {
 
         m_descriptorPool.allocate_descriptor_set(GLOBAL_LAYOUT, &m_descriptors[i].globalDescritor);
-        m_descriptorPool.set_descriptor_write(&m_backAtt, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 0, UNIFORM_STORAGE_IMAGE);
-        m_descriptorPool.set_descriptor_write(&m_frontAtt, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 1, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_ATT, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 0, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_ATT, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 1, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(
-            get_image(ResourceManager::HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE), LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 2);
+            get_image(ResourceManager::HAIR_FAR_FIELD_DIST), LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 2);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -85,21 +86,21 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
     /*
     PREPARE IMAGE TO BE USED IN SHADERS
     */
-    if (m_backAtt.currentLayout == LAYOUT_UNDEFINED)
+    if (ResourceManager::HAIR_BACK_ATT.currentLayout == LAYOUT_UNDEFINED)
     {
-        cmd.pipeline_barrier(m_backAtt, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
-        cmd.pipeline_barrier(m_frontAtt, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_BACK_ATT, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_ATT, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
     }
 
     /*
  PREPARE FOR SHADER WRITE
   */
-    if (m_backAtt.currentLayout == LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    if (ResourceManager::HAIR_BACK_ATT.currentLayout == LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     {
         cmd.pipeline_barrier(
-            m_backAtt, LAYOUT_SHADER_READ_ONLY_OPTIMAL, LAYOUT_GENERAL, ACCESS_SHADER_READ, ACCESS_SHADER_WRITE, STAGE_FRAGMENT_SHADER, STAGE_COMPUTE_SHADER);
+            ResourceManager::HAIR_BACK_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, LAYOUT_GENERAL, ACCESS_SHADER_READ, ACCESS_SHADER_WRITE, STAGE_FRAGMENT_SHADER, STAGE_COMPUTE_SHADER);
         cmd.pipeline_barrier(
-            m_frontAtt, LAYOUT_SHADER_READ_ONLY_OPTIMAL, LAYOUT_GENERAL, ACCESS_SHADER_READ, ACCESS_SHADER_WRITE, STAGE_FRAGMENT_SHADER, STAGE_COMPUTE_SHADER);
+            ResourceManager::HAIR_FRONT_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, LAYOUT_GENERAL, ACCESS_SHADER_READ, ACCESS_SHADER_WRITE, STAGE_FRAGMENT_SHADER, STAGE_COMPUTE_SHADER);
     }
 
     ShaderPass* shaderPass = m_shaderPasses[0];
@@ -144,15 +145,15 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
       PREPARE FOR SHADER READ
        */
     cmd.pipeline_barrier(
-        m_backAtt, LAYOUT_GENERAL, LAYOUT_SHADER_READ_ONLY_OPTIMAL, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_FRAGMENT_SHADER);
+        ResourceManager::HAIR_BACK_ATT, LAYOUT_GENERAL, LAYOUT_SHADER_READ_ONLY_OPTIMAL, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_FRAGMENT_SHADER);
     cmd.pipeline_barrier(
-        m_frontAtt, LAYOUT_GENERAL, LAYOUT_SHADER_READ_ONLY_OPTIMAL, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_FRAGMENT_SHADER);
+        ResourceManager::HAIR_FRONT_ATT, LAYOUT_GENERAL, LAYOUT_SHADER_READ_ONLY_OPTIMAL, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_FRAGMENT_SHADER);
 }
 
 void HairScatteringPass::cleanup() {
     ComputePass::cleanup();
-    m_backAtt.cleanup();
-    m_frontAtt.cleanup();
+    ResourceManager::HAIR_BACK_ATT.cleanup();
+    ResourceManager::HAIR_FRONT_ATT.cleanup();
 }
 
 } // namespace Core

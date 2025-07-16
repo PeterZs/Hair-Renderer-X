@@ -19,12 +19,12 @@ void VKFW::Tools::Loaders::load_OBJ(Core::Mesh* const mesh,
     // Check for errors
     if (!warn.empty())
     {
-        DEBUG_LOG("WARN: " + warn);
+        LOG_DEBUG("WARN: " + warn);
     }
     if (!err.empty())
     {
-        ERR_LOG(err);
-        DEBUG_LOG("ERROR: Couldn't load mesh");
+        LOG_ERROR(err);
+        LOG_DEBUG("ERROR: Couldn't load mesh");
         return;
     }
 
@@ -748,12 +748,12 @@ void VKFW::Tools::Loaders::load_PNG(Core::Texture* const texture,
     } else
     {
 #ifndef NDEBUG
-        DEBUG_LOG("Failed to load texture PNG file" + fileName);
+        LOG_DEBUG("Failed to load texture PNG file" + fileName);
 #endif
         return;
     };
 #ifndef NDEBUG
-    DEBUG_LOG("PNG Texture loaded successfully");
+    LOG_DEBUG("PNG Texture loaded successfully");
 #endif // DEBUG
 }
 
@@ -768,12 +768,12 @@ void VKFW::Tools::Loaders::load_HDRi(Core::TextureHDR* const texture, const std:
     } else
     {
 #ifndef NDEBUG
-        DEBUG_LOG("Failed to load texture HDRi file" + fileName);
+        LOG_DEBUG("Failed to load texture HDRi file" + fileName);
 #endif
         return;
     };
 #ifndef NDEBUG
-    DEBUG_LOG("HDRi Texture loaded successfully");
+    LOG_DEBUG("HDRi Texture loaded successfully");
 #endif // DEBUG
 }
 void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
@@ -821,7 +821,7 @@ void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
             } else
             {
 #ifndef NDEBUG
-                DEBUG_LOG("Failed to load texture 3D PNG file" + fileName);
+                LOG_DEBUG("Failed to load texture 3D PNG file" + fileName);
 #endif
                 return;
             };
@@ -847,7 +847,7 @@ void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
             } else
             {
 #ifndef NDEBUG
-                DEBUG_LOG("Failed to load texture 3D HDR file" + fileName);
+                LOG_DEBUG("Failed to load texture 3D HDR file" + fileName);
 #endif
                 return;
             };
@@ -855,7 +855,7 @@ void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
     }
 
 #ifndef NDEBUG
-    DEBUG_LOG("3D Texture loaded successfully");
+    LOG_DEBUG("3D Texture loaded successfully");
 #endif // DEBUG
 }
 void VKFW::Tools::Loaders::compute_tangents_gram_smidt(std::vector<Graphics::Vertex>& vertices,

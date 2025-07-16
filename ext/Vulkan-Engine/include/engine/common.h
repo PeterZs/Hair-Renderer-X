@@ -45,6 +45,7 @@
 #include <unordered_map>
 #include <vector>
 #include <vma/vk_mem_alloc.h>
+#include <logger.h>
 
 // ENGINE DEFINITIONS
 
@@ -59,27 +60,15 @@
 #define PROFILING_FRAME()
 #endif
 
-#define _LOG(msg)                                                                                                      \
-    {                                                                                                                  \
-        std::cout << "VKEngine log: " << msg << std::endl;                                                             \
-    }
-#define DEBUG_LOG(msg)                                                                                                 \
-    {                                                                                                                  \
-        std::cout << "VKEngine debug: " << msg << std::endl;                                                           \
-    }
-#define ERR_LOG(msg)                                                                                                   \
-    {                                                                                                                  \
-        std::cerr << "VKEngine error: " << msg << std::endl;                                                           \
-    }
-#define VK_CHECK(x)                                                                                                    \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        VkResult err = x;                                                                                              \
-        if (err)                                                                                                       \
-        {                                                                                                              \
-            std::cout << "VKEngine detected a Vulkan error: " << err << std::endl;                                     \
-            abort();                                                                                                   \
-        }                                                                                                              \
+#define VK_CHECK(x)                                                                                                                                            \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        VkResult err = x;                                                                                                                                      \
+        if (err)                                                                                                                                               \
+        {                                                                                                                                                      \
+            LOG_ERROR("VKEngine detected a Vulkan error: " + std::to_string(err));                                                                            \
+            abort();                                                                                                                                           \
+        }                                                                                                                                                      \
     } while (0)
 
 // Namespace define

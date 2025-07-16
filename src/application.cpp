@@ -4,7 +4,7 @@
 // #define USE_NEURAL_MODELS
 
 void HairViewer::init(Systems::RendererSettings settings) {
-    m_window = new WindowGLFW("Hair Viewer", 512, 512);
+    m_window = new WindowGLFW("Hair Viewer", 1024, 1024);
 
     m_window->init();
     m_window->set_window_icon(RESOURCES_PATH "textures/icon.png");
@@ -99,7 +99,7 @@ void HairViewer::setup() {
     Tools::Loaders::load_3D_file(hair, MESH_PATH + "straight.hair", false);
     hair->set_scale(0.053f);
     hair->set_rotation({90.0, 180.0f, 0.0f});
-    HairMaterial* hmat = new HairMaterial();
+    HairMaterial* hmat = new HairMaterial(0.4);
     hmat->set_thickness(0.0025f);
     hair->push_material(hmat);
     hair->set_name("Hair");

@@ -76,8 +76,7 @@ vec3 computeBackStrDev(vec3 a_b, vec3 a_f, float beta_b, float beta_f) {
 
     vec3 a_b3 = a_b * a_b * a_b;
 
-    vec3 sqrtTerm = sqrt(2.0 * beta_f2 + beta_b2 + a_b3 * sqrt(2.0 * beta_f2 + 3.0 * beta_b2));
-    vec3 numerator = a_b * sqrtTerm;
+    vec3 numerator = a_b * sqrt(2.0 * beta_f2 + beta_b2) +  a_b3 * sqrt(2.0 * beta_f2 + 3.0 * beta_b2);
     vec3 denominator = a_b + a_b3 * (2.0 * beta_f + 3.0 * beta_b);
     // denominator = max(denominator, vec3(1e-6));
 
@@ -229,7 +228,8 @@ vec3 evalHairBSDF(
 	// Local Scattering (Back)
 	//////////////////////////////////////////////////////////////////////////
 
-    float idx_thI = thI * ONE_OVER_PI;
+    // float idx_thI = abs(thI * ONE_OVER_PI_HALF);
+    float idx_thI = 0.1;
     vec3 a_f = texture(frontAttTex, vec2(idx_thI, 0.5)).rgb;
     vec3 a_b = texture(backAttTex,  vec2(idx_thI, 0.5)).rgb;
 
@@ -241,7 +241,7 @@ vec3 evalHairBSDF(
     
     float mu = thR + thI;
     vec3 sigma2 = sigB * sigB;
-    vec3 Gb = g(mu,sigma2);
+    vec3 Gb = g(mu,sigma2 + spread);
 
     // G(x; σ²) = (1 / sqrt(2πσ²)) * exp( -x² / (2σ²) )
     // vec3 normFactor = inversesqrt(2.0 * PI * sigma2);
@@ -250,6 +250,8 @@ vec3 evalHairBSDF(
 
     // Final lobe
     SBack = (I_b(phi) / (PI * cos2ThetaI)) * bsdf.density * Ab * Gb;
+    SBack = * bsdf.density * Ab * Gb  / ( (PI * cos2ThetaI)) ;
+    // SBack =    Ab * Gb;
 
     //Questions ?
     // DO WE REALLY NEED THE BINARY OPERATORS?
@@ -274,7 +276,6 @@ vec3 evalHairBSDF(
     //(phi between 0 and pi)
     //(cos between 0 and 1)
     vec3 Dp = texture(DpTex, vec3(phi * ONE_OVER_PI, cos(thD), azBeta)).rgb;
-    // vec3 Dp = texture(DpTex, vec2(phi * ONE_OVER_PI , cos(thD) )).rgb; 
 
     /*
    EPIC GAMES FITTING OF Far-Field Distribution
@@ -313,11 +314,12 @@ vec3 evalHairBSDF(
 
 	//////////////////////////////////////////////////////////////////////////
 
+    // return vec3(directFraction);
     color += (direct + SBack) * directFraction;
     return color * li;
 
-    // if( phi * ONE_OVER_PI > 0.5) return vec3(1.0,0.0,0.0);
-    //  if( phi * ONE_OVER_PI  < 0.0) return vec3(0.0,0.0,1.0);
-    //  if( phi * ONE_OVER_PI  < 0.5) return vec3(0.0,1.0,0.0);
+    // if( idx_thI > 0.5) return vec3(1.0,0.0,0.0);
+    //  if( idx_thI  < 0.0) return vec3(0.0,0.0,1.0);
+    //  if( idx_thI  < 0.5) return vec3(0.0,1.0,0.0);
     // return vec3(0.0,phi * ONE_OVER_PI,0.0);
 }

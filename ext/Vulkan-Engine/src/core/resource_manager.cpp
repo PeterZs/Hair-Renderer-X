@@ -7,11 +7,13 @@ namespace Core {
 Core::PanoramaConverterPass*  ResourceManager::panoramaConverterPass = nullptr;
 Core::IrrandianceComputePass* ResourceManager::irradianceComputePass = nullptr;
 
-Core::Texture*    ResourceManager::FALLBACK_TEXTURE                     = nullptr;
-Core::Texture*    ResourceManager::FALLBACK_CUBEMAP                     = nullptr;
-Core::Texture*    ResourceManager::BLUE_NOISE_TEXTURE                   = nullptr;
-Core::TextureHDR* ResourceManager::HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE = nullptr;
-Core::Mesh*       ResourceManager::VIGNETTE                             = nullptr;
+Core::Texture*    ResourceManager::FALLBACK_TEXTURE    = nullptr;
+Core::Texture*    ResourceManager::FALLBACK_CUBEMAP    = nullptr;
+Core::Texture*    ResourceManager::BLUE_NOISE_TEXTURE  = nullptr;
+Core::TextureHDR* ResourceManager::HAIR_FAR_FIELD_DIST = nullptr;
+Graphics::Image   ResourceManager::HAIR_BACK_ATT;
+Graphics::Image   ResourceManager::HAIR_FRONT_ATT;
+Core::Mesh*       ResourceManager::VIGNETTE = nullptr;
 
 void ResourceManager::init_basic_resources(Graphics::Device* const device) {
 
@@ -47,16 +49,16 @@ void ResourceManager::init_basic_resources(Graphics::Device* const device) {
     upload_texture_data(device, BLUE_NOISE_TEXTURE);
 
     // Setup blue noise texture
-    if (!HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE) // If not user set
+    if (!HAIR_FAR_FIELD_DIST) // If not user set
     {
         TextureSettings settings{};
-        settings.useMipmaps                  = false;
-        settings.adressMode                  = ADDRESS_MODE_CLAMP_TO_BORDER;
-        HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE = new TextureHDR(settings);
+        settings.useMipmaps = false;
+        settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
+        HAIR_FAR_FIELD_DIST = new TextureHDR(settings);
 
-        Tools::Loaders::load_3D_texture(HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE, ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
+        Tools::Loaders::load_3D_texture(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
     }
-    upload_texture_data(device, HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE);
+    upload_texture_data(device, HAIR_FAR_FIELD_DIST);
 }
 
 void ResourceManager::clean_basic_resources() {
@@ -64,8 +66,8 @@ void ResourceManager::clean_basic_resources() {
     destroy_texture_data(FALLBACK_TEXTURE);
     destroy_texture_data(BLUE_NOISE_TEXTURE);
     destroy_texture_data(FALLBACK_CUBEMAP);
-    destroy_texture_data(HAIR_IRRADIANCE_DISTRIBUTION_TEXTURE);
-    
+    destroy_texture_data(HAIR_FAR_FIELD_DIST);
+
     if (irradianceComputePass)
     {
         irradianceComputePass->clean_framebuffer();

@@ -238,7 +238,7 @@ vec3 hairShadow(out vec3 spread, out float directF, vec3 pShad, sampler2DArray s
     for(int i = 0; i < 4; ++i) {
         float z = texture(shadowMap, vec3(tcp[i], lightId)).r;
         float h = max(0.0, pShad.z - z);
-        float n = h * density * 0.7;
+        float n = h * density * 10000.0;
         dir[i] = pow(1.0 - coverage, n);
         t_d[i] = pow(1.0 - coverage * (1.0 - a_f), vec3(n, n, n));
         spr[i] = n * coverage * w_f;
@@ -285,12 +285,12 @@ void main() {
             vec3    shadow = vec3(1.0);
             vec3    spread = vec3(0.0);
             float   directFraction = 1.0;
-            if(int(object.otherParams.y) == 1 && scene.lights[i].shadowCast == 1) {
-                if(scene.lights[i].shadowType == 0) //Classic
-                    shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
-                if(scene.lights[i].shadowType == 1) //VSM   
-                    shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
-            }
+            shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
+            // if(int(object.otherParams.y) == 1 && scene.lights[i].shadowCast == 1) {
+            //     if(scene.lights[i].shadowType == 0) //Classic
+            //     if(scene.lights[i].shadowType == 1) //VSM   
+            //         shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
+            // }
             vec3 lighting = evalHairBSDF(
                 normalize(scene.lights[i].position.xyz - g_pos), 
                 normalize(-g_pos),
@@ -299,11 +299,9 @@ void main() {
                 shadow,
                 spread,
                 directFraction,
-                //TBD
                 DpTex,
+                attTexBack,
                 attTexFront,
-                attTexFront,
-                //
                 material.r, 
                 material.tt, 
                 material.trt);
