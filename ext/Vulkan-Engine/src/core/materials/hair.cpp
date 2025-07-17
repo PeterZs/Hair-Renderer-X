@@ -32,7 +32,7 @@ Graphics::MaterialUniforms HairMaterial::get_uniforms() const {
     Graphics::MaterialUniforms uniforms;
     uniforms.dataSlot1 = Vec4(m_sigma_a, m_thickness);
     uniforms.dataSlot2 = {deg2rad(m_roughness), deg2rad(m_shift), m_ior, m_density};
-    uniforms.dataSlot3 = {m_Rpower, m_TTpower, m_TRTpower, 1.0f};
+    uniforms.dataSlot3 = {m_Rpower, m_TTpower, m_TRTpower, m_useScatter};
     uniforms.dataSlot4 = {m_azRoughness, m_R, m_TT, m_TRT};
 
     return uniforms;

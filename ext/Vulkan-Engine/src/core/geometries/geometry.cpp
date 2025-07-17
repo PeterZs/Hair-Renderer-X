@@ -32,7 +32,7 @@ void GeometricData::compute_statistics() {
     maxCoords = {0.0f, 0.0f, 0.0f};
     minCoords = {INFINITY, INFINITY, INFINITY};
 
-    for (const Graphics::Vertex& v : vertexData)
+   for (const Graphics::Vertex& v : vertexData)
     {
         if (v.pos.x > maxCoords.x)
             maxCoords.x = v.pos.x;

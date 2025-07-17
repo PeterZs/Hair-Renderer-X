@@ -14,8 +14,6 @@ class HairScatteringPass : public ComputePass
     };
     std::vector<FrameDescriptors> m_descriptors;
 
-    Graphics::Image               m_backAtt;
-    Graphics::Image               m_frontAtt;
 
     void create_hair_scattering_images();
 

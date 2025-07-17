@@ -6,10 +6,10 @@ namespace Tools {
 
 void Panel::render(ImVec2 extent) {
     m_pixelExtent = {m_extent.x * extent.x, m_extent.y * extent.y};
-    ImGui::SetNextWindowPos({m_position.x * extent.x, m_position.y * extent.y},
-                            (ImGuiWindowFlags)m_flags == ImGuiWindowFlags_NoMove ? ImGuiCond_Always : ImGuiCond_Once);
-    ImGui::SetNextWindowSize({m_extent.x * extent.x, m_extent.y * extent.y},
-                             (ImGuiWindowFlags)m_flags == ImGuiWindowFlags_NoMove ? ImGuiCond_Always : ImGuiCond_Once);
+    ImGui::SetNextWindowPos(
+        {m_position.x * extent.x, m_position.y * extent.y}, (ImGuiWindowFlags)m_flags == ImGuiWindowFlags_NoMove ? ImGuiCond_Always : ImGuiCond_Once);
+    ImGui::SetNextWindowSize(
+        {m_extent.x * extent.x, m_extent.y * extent.y}, (ImGuiWindowFlags)m_flags == ImGuiWindowFlags_NoMove ? ImGuiCond_Always : ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(m_collapsed, ImGuiCond_Once);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, m_rounding);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
@@ -22,9 +22,8 @@ void Panel::render(ImVec2 extent) {
     {
         if (ImGui::Begin(m_title,
                          m_closable ? &m_open : NULL,
-                         m_collapsable
-                             ? (ImGuiWindowFlags)m_flags | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar
-                             : (ImGuiWindowFlags)m_flags | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
+                         m_collapsable ? (ImGuiWindowFlags)m_flags | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar
+                                       : (ImGuiWindowFlags)m_flags | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
         {
             //     ImGui::SetWindowPos({m_position.x * m_parentOverlay->get_extent().x, m_position.y *
             //     m_parentOverlay->get_extent().y});
@@ -138,11 +137,10 @@ void SceneExplorerWidget::render() {
 
     ImGui::SeparatorText("SCENE EXPLORER");
 
-    static ImGuiTableFlags flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
-                                   ImGuiTableFlags_NoBordersInBody /*| ImGuiTableFlags_BordersH*/;
+    static ImGuiTableFlags flags =
+        ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_NoBordersInBody /*| ImGuiTableFlags_BordersH*/;
 
-    if (ImGui::BeginTable(
-            "2ways", 2, flags, ImVec2(m_parent->get_pixel_extent().x * 0.95f, m_parent->get_pixel_extent().y * 0.3f)))
+    if (ImGui::BeginTable("2ways", 2, flags, ImVec2(m_parent->get_pixel_extent().x * 0.95f, m_parent->get_pixel_extent().y * 0.3f)))
     {
         ImGui::TableSetupColumn(" Name", ImGuiTableColumnFlags_NoHide);
         ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 3 * 18.0f);
@@ -259,9 +257,8 @@ void SceneExplorerWidget::displayObject(Object3D* const obj, int& counter) {
     ImGui::TableNextColumn();
     std::string name = obj->get_name();
 
-    if (ImGui::TreeNodeEx(name.c_str(),
-                          ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen |
-                              ImGuiTreeNodeFlags_SpanFullWidth))
+    if (ImGui::TreeNodeEx(
+            name.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
         // node->selected = ImGui::IsItemClicked();
         if (ImGui::IsItemClicked())
@@ -340,8 +337,7 @@ void ObjectExplorerWidget::render() {
             faceCount += (int)get_VAO(model->get_geometry(i))->indexCount / 3;
         }
 
-        ImGui::BeginTable(
-            "Mesh Details", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
+        ImGui::BeginTable("Mesh Details", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
 
         ImGui::TableSetupColumn("Mesh", ImGuiTableColumnFlags_NoHide);
         ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, m_parent->get_pixel_extent().x * 0.5f);
@@ -402,8 +398,7 @@ void ObjectExplorerWidget::render() {
         ImGui::EndTable();
 
         ImGui::SeparatorText("Material");
-        ImGui::BeginTable(
-            "Mesh Details", 1, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
+        ImGui::BeginTable("Mesh Details", 1, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
         ImGui::TableSetupColumn("Material", ImGuiTableColumnFlags_NoHide);
 
         for (size_t i = 0; i < model->get_num_materials(); i++)
@@ -839,6 +834,11 @@ void ObjectExplorerWidget::render() {
                 {
                     mat->set_ior(ior); // Update index of refraction
                 }
+                bool scatter = mat->enable_scattering();
+                if (ImGui::Checkbox("Enable Scattering", &scatter))
+                {
+                    mat->enable_scattering(scatter); 
+                }
             }
 
             if (model->get_material(i)->get_type() == IMaterial::Type::UNLIT_TYPE)
@@ -942,8 +942,7 @@ void ObjectExplorerWidget::render() {
                 float shadowFov = light->get_shadow_fov();
                 if (ImGui::DragFloat("FOV", &shadowFov, 1.0f, 0.0f, 160.0f))
                     light->set_shadow_fov(shadowFov);
-                float position[3] = {
-                    light->get_shadow_target().x, light->get_shadow_target().y, light->get_shadow_target().z};
+                float position[3] = {light->get_shadow_target().x, light->get_shadow_target().y, light->get_shadow_target().z};
                 if (ImGui::DragFloat3("Target", position, 0.1f))
                 {
                     light->set_shadow_target(Vec3(position[0], position[1], position[2]));
@@ -970,8 +969,7 @@ void ObjectExplorerWidget::render() {
                 float shadowFov = light->get_shadow_fov();
                 if (ImGui::DragFloat("FOV", &shadowFov, 1.0f, 0.0f, 160.0f))
                     light->set_shadow_fov(shadowFov);
-                float position[3] = {
-                    light->get_shadow_target().x, light->get_shadow_target().y, light->get_shadow_target().z};
+                float position[3] = {light->get_shadow_target().x, light->get_shadow_target().y, light->get_shadow_target().z};
                 if (ImGui::DragFloat3("Target", position, 0.1f))
                 {
                     light->set_shadow_target(Vec3(position[0], position[1], position[2]));

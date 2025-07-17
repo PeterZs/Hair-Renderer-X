@@ -13,6 +13,8 @@ Core::Texture*    ResourceManager::BLUE_NOISE_TEXTURE  = nullptr;
 Core::TextureHDR* ResourceManager::HAIR_FAR_FIELD_DIST = nullptr;
 Graphics::Image   ResourceManager::HAIR_BACK_ATT;
 Graphics::Image   ResourceManager::HAIR_FRONT_ATT;
+Graphics::Image   ResourceManager::HAIR_DENSITY_VOLUME;
+Graphics::Image   ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME;
 Core::Mesh*       ResourceManager::VIGNETTE = nullptr;
 
 void ResourceManager::init_basic_resources(Graphics::Device* const device) {
@@ -229,6 +231,10 @@ void ResourceManager::update_object_data(Graphics::Device* const device,
                     objectData.model        = m->get_model_matrix();
                     objectData.otherParams1 = {m->affected_by_fog(), m->receive_shadows(), m->cast_shadows(), false};
                     objectData.otherParams2 = {m->is_selected(), m->get_bounding_volume()->center};
+                    // objectData.maxCoord     = objectData.model * Vec4(m->get_bounding_volume()->maxCoords, 1.0);
+                    // objectData.minCoord     = objectData.model * Vec4(m->get_bounding_volume()->minCoords, 1.0);
+                    objectData.maxCoord     =  Vec4(m->get_bounding_volume()->maxCoords, 1.0);
+                    objectData.minCoord     =  Vec4(m->get_bounding_volume()->minCoords, 1.0);
                     currentFrame->uniformBuffers[OBJECT_LAYOUT].upload_data(&objectData, sizeof(Graphics::ObjectUniforms), objectOffset);
 
                     for (size_t i = 0; i < m->get_num_geometries(); i++)
@@ -318,15 +324,15 @@ void ResourceManager::upload_geometry_data(Graphics::Device* const device, Core:
     Graphics::VertexArrays* rd = get_VAO(g);
     if (!rd->loadedOnGPU)
     {
-        const Core::GeometricData* gd        = g->get_properties();
-        size_t                     vboSize   = sizeof(gd->vertexData[0]) * gd->vertexData.size();
-        size_t                     iboSize   = sizeof(gd->vertexIndex[0]) * gd->vertexIndex.size();
-        size_t                     voxelSize = sizeof(gd->voxelData[0]) * gd->voxelData.size();
-        rd->indexCount                       = gd->vertexIndex.size();
-        rd->vertexCount                      = gd->vertexData.size();
-        rd->voxelCount                       = gd->voxelData.size();
+        const Core::GeometricData gd        = g->get_properties();
+        size_t                    vboSize   = sizeof(gd.vertexData[0]) * gd.vertexData.size();
+        size_t                    iboSize   = sizeof(gd.vertexIndex[0]) * gd.vertexIndex.size();
+        size_t                    voxelSize = sizeof(gd.voxelData[0]) * gd.voxelData.size();
+        rd->indexCount                      = gd.vertexIndex.size();
+        rd->vertexCount                     = gd.vertexData.size();
+        rd->voxelCount                      = gd.voxelData.size();
 
-        device->upload_vertex_arrays(*rd, vboSize, gd->vertexData.data(), iboSize, gd->vertexIndex.data(), voxelSize, gd->voxelData.data());
+        device->upload_vertex_arrays(*rd, vboSize, gd.vertexData.data(), iboSize, gd.vertexIndex.data(), voxelSize, gd.voxelData.data());
     }
     /*
     ACCELERATION STRUCTURE

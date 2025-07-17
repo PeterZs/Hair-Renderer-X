@@ -4,7 +4,6 @@ VULKAN_ENGINE_NAMESPACE_BEGIN
 namespace Graphics {
 namespace Translator {
 
-// ColorFormatType -> VkFormat
 VkFormat get(ColorFormatType colorFormatType) {
     switch (colorFormatType)
     {
@@ -18,16 +17,24 @@ VkFormat get(ColorFormatType colorFormatType) {
         return VK_FORMAT_R8G8B8A8_SRGB;
     case ColorFormatType::SBGRA_8:
         return VK_FORMAT_B8G8R8A8_SRGB;
+    case ColorFormatType::SR_16F:
+        return VK_FORMAT_R16_SFLOAT;
+    case ColorFormatType::SR_32F:
+        return VK_FORMAT_R32_SFLOAT;
     case ColorFormatType::SRG_16F:
         return VK_FORMAT_R16G16_SFLOAT;
     case ColorFormatType::SRG_32F:
         return VK_FORMAT_R32G32_SFLOAT;
+    case ColorFormatType::SRGB_16F:
+        return VK_FORMAT_R16G16B16_SFLOAT;
     case ColorFormatType::SRGBA_16F:
         return VK_FORMAT_R16G16B16A16_SFLOAT;
     case ColorFormatType::SRGBA_32F:
         return VK_FORMAT_R32G32B32A32_SFLOAT;
     case ColorFormatType::SRGB_32F:
         return VK_FORMAT_R32G32B32_SFLOAT;
+    case ColorFormatType::R_32_UINT:
+        return VK_FORMAT_R32_UINT;
     case ColorFormatType::R_8U:
         return VK_FORMAT_R8_UNORM;
     case ColorFormatType::RG_8U:
@@ -40,6 +47,10 @@ VkFormat get(ColorFormatType colorFormatType) {
         return VK_FORMAT_D16_UNORM;
     case ColorFormatType::DEPTH_32F:
         return VK_FORMAT_D32_SFLOAT;
+    case ColorFormatType::RGB10A2:
+        return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+    // case ColorFormatType::RG11B10_UFLOAT:
+    //     return VK_FORMAT_R11G11B10_UFLOAT_PACK32;
     default:
         throw std::invalid_argument("VKEngine error: Unknown ColorFormatType");
     }

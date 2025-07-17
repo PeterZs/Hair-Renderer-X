@@ -69,8 +69,8 @@ class Geometry
         return !m_properties.vertexIndex.empty();
     }
 
-    inline const GeometricData* get_properties() const {
-        return &m_properties;
+    inline const GeometricData& get_properties() const {
+        return m_properties;
     }
     /*
     Use Voxel Acceleration Structure

@@ -3,9 +3,10 @@
 
 #include <engine/core/passes/bloom_pass.h>
 #include <engine/core/passes/forward_pass.h>
+#include <engine/core/passes/hair_scattering_pass.h>
+#include <engine/core/passes/hair_voxelization_pass.h>
 #include <engine/core/passes/postprocess_pass.h>
 #include <engine/core/passes/variance_shadow_pass.h>
-#include <engine/core/passes/hair_scattering_pass.h>
 
 #include <engine/systems/renderers/renderer.h>
 
@@ -21,12 +22,13 @@ class ForwardRenderer : public BaseRenderer
 
     enum RendererPasses
     {
-        SHADOW_PASS       = 0,
-        HAIR_SCATTER_PASS = 1,
-        FORWARD_PASS      = 2,
-        BLOOM_PASS        = 3,
-        TONEMAPPIN_PASS   = 4,
-        FXAA_PASS         = 5,
+        SHADOW_PASS            = 0,
+        HAIR_SCATTER_PASS      = 1,
+        HAIR_VOXELIZATION_PASS = 2,
+        FORWARD_PASS           = 3,
+        BLOOM_PASS             = 4,
+        TONEMAPPIN_PASS        = 5,
+        FXAA_PASS              = 6,
     };
 
     ShadowResolution m_shadowQuality = ShadowResolution::MEDIUM;

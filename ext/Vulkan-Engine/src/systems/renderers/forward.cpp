@@ -39,12 +39,13 @@ void ForwardRenderer::create_passes() {
     const uint32_t SHADOW_RES          = (uint32_t)m_shadowQuality;
     const uint32_t totalImagesInFlight = (uint32_t)m_settings.bufferingType + 1;
 
-    m_passes.resize(6, nullptr);
+    m_passes.resize(7, nullptr);
     // Shadow Pass
     m_passes[SHADOW_PASS] = new Core::VarianceShadowPass(m_device, {SHADOW_RES, SHADOW_RES}, ENGINE_MAX_LIGHTS, m_settings.depthFormat);
 
-    // Hair Scatter Pass
+    // Hair Related Passes
     m_passes[HAIR_SCATTER_PASS] = new Core::HairScatteringPass(m_device, 128);
+    m_passes[HAIR_VOXELIZATION_PASS] = new Core::HairVoxelizationPass(m_device, 64);
 
     // Forward Pass
     m_passes[FORWARD_PASS] = new Core::ForwardPass(m_device, m_window->get_extent(), SRGBA_32F, m_settings.depthFormat, m_settings.samplesMSAA, false);

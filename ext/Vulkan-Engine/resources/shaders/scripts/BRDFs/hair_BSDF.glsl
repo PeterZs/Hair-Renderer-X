@@ -23,8 +23,7 @@ struct HairBSDF {
     float Rpower;
     float TTpower;
     float TRTpower;
-    bool localScatter;
-    bool globalScatter;
+    bool useScatter;
 };
 
 //Bravais Index
@@ -70,13 +69,12 @@ vec3 Ap(int p, float h, float ior, float thD, vec3 sigma_a) {
 //Local Scattering Lobe Std Dev (Dual-Scattering)
 vec3 computeBackStrDev(vec3 a_b, vec3 a_f, float beta_b, float beta_f) {
 
-   
     float beta_f2 = beta_f * beta_f;
     float beta_b2 = beta_b * beta_b;
 
     vec3 a_b3 = a_b * a_b * a_b;
 
-    vec3 numerator = a_b * sqrt(2.0 * beta_f2 + beta_b2) +  a_b3 * sqrt(2.0 * beta_f2 + 3.0 * beta_b2);
+    vec3 numerator = a_b * sqrt(2.0 * beta_f2 + beta_b2) + a_b3 * sqrt(2.0 * beta_f2 + 3.0 * beta_b2);
     vec3 denominator = a_b + a_b3 * (2.0 * beta_f + 3.0 * beta_b);
     // denominator = max(denominator, vec3(1e-6));
 
@@ -91,18 +89,18 @@ vec3 computeAb(vec3 a_b, vec3 a_f) {
     vec3 oneMinusAfSqr = max(vec3(1.0) - afSqr, vec3(1e-6)); // Avoid divide-by-zero
 
     vec3 abCubed = a_b * a_b * a_b;
-    
+
     vec3 A1 = (a_b * afSqr) / oneMinusAfSqr;
     vec3 A3 = (abCubed * afSqr) / (oneMinusAfSqr * oneMinusAfSqr * oneMinusAfSqr);
-    
+
     vec3 Ab = A1 + A3;
     return Ab;
 }
 
-float I_b(float phi){
+float I_b(float phi) {
     return phi > (PI * 0.5) ? 1.0 : 0.0;
 }
-float I_f(float phi){
+float I_f(float phi) {
     return phi < (PI * 0.5) ? 1.0 : 0.0;
 }
 
@@ -222,41 +220,35 @@ vec3 evalHairBSDF(
     vec3 color = vec3(0.0);
     vec3 direct = vec3(0.0);
     vec3 SBack = vec3(0.0);
-    vec3 SFront = vec3(0.0);
+    vec3 fGlobal = vec3(0.0);
 
     //////////////////////////////////////////////////////////////////////////
 	// Local Scattering (Back)
 	//////////////////////////////////////////////////////////////////////////
 
-    // float idx_thI = abs(thI * ONE_OVER_PI_HALF);
-    float idx_thI = 0.1;
-    vec3 a_f = texture(frontAttTex, vec2(idx_thI, 0.5)).rgb;
-    vec3 a_b = texture(backAttTex,  vec2(idx_thI, 0.5)).rgb;
+    if(bsdf.useScatter) {
 
-    vec3 Ab = computeAb(a_b,a_f);
-    vec3 sigB = computeBackStrDev(a_b, a_f, betas[2], betas[1]);
-   
-    float cosThetaI = cos(thI);
-    float cos2ThetaI = cosThetaI * cosThetaI;
-    
-    float mu = thR + thI;
-    vec3 sigma2 = sigB * sigB;
-    vec3 Gb = g(mu,sigma2 + spread);
+        float idx_thI = abs(thI * ONE_OVER_PI_HALF);
+        // float idx_thI = 0.1;
+        vec3 a_f = texture(frontAttTex, vec2(idx_thI, 0.5)).rgb;
+        vec3 a_b = texture(backAttTex, vec2(idx_thI, 0.5)).rgb;
 
-    // G(x; σ²) = (1 / sqrt(2πσ²)) * exp( -x² / (2σ²) )
-    // vec3 normFactor = inversesqrt(2.0 * PI * sigma2);
-    // vec3 exponent   = - (mu * mu) / (2.0 * sigma2);
-    // vec3 gaussian   = normFactor * exp(exponent);
+        vec3 Ab = computeAb(a_b, a_f);
+        vec3 sigB = computeBackStrDev(a_b, a_f, betas[2], betas[1]);
+
+        float cosThetaI = cos(thI);
+        float cos2ThetaI = cosThetaI * cosThetaI;
+
+        float mu = thR + thI;
+        vec3 sigma2 = sigB * sigB;
+        vec3 Gb = g(mu, sigma2);
 
     // Final lobe
-    SBack = (I_b(phi) / (PI * cos2ThetaI)) * bsdf.density * Ab * Gb;
-    SBack = * bsdf.density * Ab * Gb  / ( (PI * cos2ThetaI)) ;
+    // SBack = (I_b(phi) / (PI * cos2ThetaI)) * bsdf.density * Ab * Gb;
+        SBack = (bsdf.density * Ab * Gb) / ((PI * cos2ThetaI));
     // SBack =    Ab * Gb;
 
-    //Questions ?
-    // DO WE REALLY NEED THE BINARY OPERATORS?
-    // CHECK HEMISPHERES ORIENTATION
-
+    }
 
     //////////////////////////////////////////////////////////////////////////
 	// Direct Illumination
@@ -285,7 +277,6 @@ vec3 evalHairBSDF(
     // Dp.y = exp(-3.65 * cosPhi - 3.98);
     // Dp.z = exp(17 * cosPhi - 16.78);
 
-
     float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     vec3 nR = vec3(aR * Dp.x);
 
@@ -306,16 +297,26 @@ vec3 evalHairBSDF(
 
     direct = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
 
+    color += (direct + SBack) * directFraction;
+
     //////////////////////////////////////////////////////////////////////////
 	// Global Scattering
 	//////////////////////////////////////////////////////////////////////////
 
+    if(bsdf.useScatter) {
+
+
+        // float cosThetaI = cos(thI);
+        // float cos2ThetaI = cosThetaI * cosThetaI;
+        // float mu = thR + thI;
+        // vec3 Gb = g(mu,  spread);
+        // fGlobal = transDirect * ((bsdf.density * Gb) / ((PI * cos2ThetaI))+ SBack);
     // ..........
+    }
 
 	//////////////////////////////////////////////////////////////////////////
-
+    color += fGlobal;
     // return vec3(directFraction);
-    color += (direct + SBack) * directFraction;
     return color * li;
 
     // if( idx_thI > 0.5) return vec3(1.0,0.0,0.0);

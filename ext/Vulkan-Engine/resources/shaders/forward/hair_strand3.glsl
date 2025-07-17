@@ -262,7 +262,7 @@ vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap
 void main() {
 
     //BSDF setup ............................................................
-    bsdf.tangent =  normalize(g_dir);
+    bsdf.tangent = normalize(g_dir);
 
     bsdf.beta = material.beta;
     bsdf.azBeta = material.azBeta;
@@ -275,6 +275,8 @@ void main() {
     bsdf.TTpower = material.TTpower;
     bsdf.TRTpower = material.TRTpower;
 
+    bsdf.useScatter = material.scatter == 1.0 ? true : false;
+
 
     //DIRECT LIGHTING .......................................................
     vec3 color = vec3(0.0);
@@ -285,12 +287,12 @@ void main() {
             vec3    shadow = vec3(1.0);
             vec3    spread = vec3(0.0);
             float   directFraction = 1.0;
-            shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
-            // if(int(object.otherParams.y) == 1 && scene.lights[i].shadowCast == 1) {
-            //     if(scene.lights[i].shadowType == 0) //Classic
-            //     if(scene.lights[i].shadowType == 1) //VSM   
-            //         shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
-            // }
+            if(int(object.otherParams.y) == 1 && scene.lights[i].shadowCast == 1) {
+                if(scene.lights[i].shadowType == 0) //Classic
+                    shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
+                if(scene.lights[i].shadowType == 1) //VSM   
+                    shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
+            }
             vec3 lighting = evalHairBSDF(
                 normalize(scene.lights[i].position.xyz - g_pos), 
                 normalize(-g_pos),

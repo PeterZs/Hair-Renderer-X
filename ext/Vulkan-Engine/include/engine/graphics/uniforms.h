@@ -55,6 +55,8 @@ struct SceneUniforms {
 
 struct ObjectUniforms {
     Mat4 model;
+    Vec4 maxCoord; // x is selected // is affected by ambient light
+    Vec4 minCoord; // x is selected // is affected by ambient light
     Vec4 otherParams1; // x is affected by fog, y is receive shadows, z cast shadows
     Vec4 otherParams2; // x is selected // is affected by ambient light
 };

@@ -110,6 +110,11 @@ struct CommandBuffer {
     void push_constants(ShaderPass& pass, ShaderStageFlags stage, const void* data, uint32_t size, uint32_t offset = 0);
 
     void dispatch_compute(Extent3D grid);
+
+       /*
+    Generates mipmaps for a given image following a downsampling by 2 strategy
+    */
+    void generate_mipmaps(Image& img, ImageLayout initialLayout = LAYOUT_TRANSFER_DST_OPTIMAL, ImageLayout finalLayout = LAYOUT_SHADER_READ_ONLY_OPTIMAL, FilterType filtering = FILTER_LINEAR);
 };
 struct CommandPool {
     VkCommandPool handle = VK_NULL_HANDLE;

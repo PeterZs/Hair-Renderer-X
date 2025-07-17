@@ -43,13 +43,7 @@ class HairMaterial : public IMaterial
     bool m_useScatter      = false;
     bool m_usePigmentation = true;
 
-    // enum Textures
-    // {
-    //     Dp       = 0,
-    //     AttFront = 1,
-    //     AttBack  = 2,
-    //     Ng       = 3,
-    // };
+
 
     std::unordered_map<int, ITexture*> m_textures;
     std::unordered_map<int, bool>      m_textureBindingState;
@@ -65,8 +59,6 @@ class HairMaterial : public IMaterial
     virtual void set_texture_binding_state(int id, bool state) {
         m_textureBindingState[id] = state;
     }
-
-  
 
     inline void compute_sigma_a() {
 
@@ -84,31 +76,12 @@ class HairMaterial : public IMaterial
         , m_eumelanine(eumelanine)
         , m_pheomelanine(pheomelanine) {
         compute_sigma_a();
-        // TextureSettings settings{};
-        // settings.useMipmaps = false;
-        // settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
-        // m_textures[Dp]      = new TextureHDR(settings);
-
-
-        // Tools::Loaders::load_3D_texture(m_textures[Dp], ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
-
-        // m_textureBindingState[Dp] = false;
-        m_isDirty                 = true;
     }
     HairMaterial(float eumelanine, float pheomelanine, MaterialSettings params)
         : IMaterial(HAIR_STR_TYPE, params)
         , m_eumelanine(eumelanine)
         , m_pheomelanine(pheomelanine) {
         compute_sigma_a();
-
-        // TextureSettings settings{};
-        // settings.useMipmaps = false;
-        // settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
-        // m_textures[Dp]      = new Texture(settings);
-
-        // Tools::Loaders::load_texture(m_textures[Dp], ENGINE_RESOURCES_PATH "Dp.hdr", TEXTURE_FORMAT_TYPE_NORMAL, false);
-        // m_textureBindingState[Dp] = false;
-        m_isDirty                 = true;
     }
 
     inline float get_eumelanine() const {
@@ -189,6 +162,13 @@ class HairMaterial : public IMaterial
         m_isDirty = true;
     }
 
+    // scattering
+    inline bool enable_scattering() const {
+        return m_useScatter;
+    }
+    inline void enable_scattering(bool e) {
+        m_useScatter = e;
+    }
     // Secoundary reflection toggle
     inline bool get_TRT() const {
         return m_TRT;

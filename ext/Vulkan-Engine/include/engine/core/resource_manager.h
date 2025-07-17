@@ -49,6 +49,8 @@ class ResourceManager
     static Core::TextureHDR* HAIR_FAR_FIELD_DIST;
     static Graphics::Image   HAIR_BACK_ATT;
     static Graphics::Image   HAIR_FRONT_ATT;
+    static Graphics::Image   HAIR_DENSITY_VOLUME;
+    static Graphics::Image   HAIR_PERECEIVED_DENSITY_VOLUME;
     /*
     Vignette for RTT
     */
