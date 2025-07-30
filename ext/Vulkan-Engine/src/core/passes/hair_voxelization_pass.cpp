@@ -25,15 +25,15 @@ void HairVoxelizationPass::create_voxelization_image() {
     // Codified percieved Density
     ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME.cleanup();
 
-    ImageConfig config                   = {};
-    config.viewType                      = TEXTURE_3D;
-    config.format                        = R_32_UINT;
-    config.usageFlags                    = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
-    config.mipLevels                     = 1;
+    config                                          = {};
+    config.viewType                                 = TEXTURE_3D;
+    config.format                                   = SRGBA_32F;
+    config.usageFlags                               = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
+    config.mipLevels                                = 1;
     ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME = m_device->create_image({m_imageExtent.width, m_imageExtent.width, m_imageExtent.width}, config, false);
     ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME.create_view(config);
 
-    SamplerConfig samplerConfig      = {};
+    samplerConfig                    = {};
     samplerConfig.samplerAddressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerConfig.border             = BorderColor::FLOAT_OPAQUE_BLACK;
     ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME.create_sampler(samplerConfig);
@@ -65,14 +65,46 @@ void HairVoxelizationPass::setup_attachments(std::vector<Graphics::AttachmentInf
 }
 void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
 
+    // CREATE AND POPULATE DIRECTION BUFFER
+    // //////////////////////////////////////
+    const size_t BUFFER_SIZE = m_device->pad_uniform_buffer_size(sizeof(Vec4) * MAX_DIRECTIONS);
+    m_directionsBuffer       = m_device->create_buffer_VMA(BUFFER_SIZE, BUFFER_USAGE_STORAGE_BUFFER, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    std::vector<Vec4> directions(MAX_DIRECTIONS);
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+    const float goldenRatio    = (1.0f + std::sqrt(5.0f)) * 0.5f;
+    const float angleIncrement = 2.0f * float(M_PI) * (1.0f - 1.0f / goldenRatio);
+
+    for (unsigned int i = 0; i < MAX_DIRECTIONS; ++i)
+    {
+        float t           = float(i) / float(MAX_DIRECTIONS);
+        float inclination = std::acos(1.0f - 2.0f * t); // polar angle
+        float azimuth     = angleIncrement * i;         // azimuthal angle
+
+        float x = std::sin(inclination) * std::cos(azimuth);
+        float y = std::sin(inclination) * std::sin(azimuth);
+        float z = std::cos(inclination);
+
+        directions[i] = Vec4(x, y, z, 0.0f);
+    }
+
+    m_directionsBuffer.upload_data(directions.data(), BUFFER_SIZE);
+
+    // //////////////////////////////////////
+
     m_descriptorPool = m_device->create_descriptor_pool(ENGINE_MAX_OBJECTS, ENGINE_MAX_OBJECTS, ENGINE_MAX_OBJECTS, ENGINE_MAX_OBJECTS, ENGINE_MAX_OBJECTS);
     m_descriptors.resize(frames.size());
 
     // GLOBAL SET
-    LayoutBinding camBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 0);
-    LayoutBinding sceneBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 1);
+    LayoutBinding camBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_COMPUTE | SHADER_STAGE_FRAGMENT, 0);
+    LayoutBinding sceneBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_COMPUTE | SHADER_STAGE_FRAGMENT, 1);
     LayoutBinding voxelBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_FRAGMENT, 2);
-    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {camBufferBinding, sceneBufferBinding, voxelBinding});
+    LayoutBinding shBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 3);
+    LayoutBinding dirBinding(UNIFORM_STORAGE_BUFFER, SHADER_STAGE_COMPUTE, 4);
+    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {camBufferBinding, sceneBufferBinding, voxelBinding, shBinding, dirBinding});
 
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 0);
@@ -94,6 +126,9 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
         // Voxelization Image
         m_descriptorPool.set_descriptor_write(
             &ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 2, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(
+            &ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 3, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&m_directionsBuffer, BUFFER_SIZE, 0, &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 4);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -126,13 +161,13 @@ void HairVoxelizationPass::setup_shader_passes() {
 
     m_shaderPasses[0] = voxelPass;
 
-    // ComputeShaderPass* mergePass               = new ComputeShaderPass(m_device->get_handle(), GET_RESOURCE_PATH("shaders/VXGI/merge_intermediates.glsl"));
-    // mergePass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+    ComputeShaderPass* shPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_percieved_density.glsl");
+    shPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
-    // mergePass->build_shader_stages();
-    // mergePass->build(m_descriptorPool);
+    shPass->build_shader_stages();
+    shPass->build(m_descriptorPool);
 
-    // m_shaderPasses["merge"] = mergePass;
+    m_shaderPasses[1] = shPass;
 }
 void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
     PROFILING_EVENT()
@@ -145,12 +180,20 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
     if (ResourceManager::HAIR_DENSITY_VOLUME.currentLayout == LAYOUT_UNDEFINED)
     {
         cmd.pipeline_barrier(
-            ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_READ, STAGE_TOP_OF_PIPE, STAGE_FRAGMENT_SHADER);
+            ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_FRAGMENT_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME,
+                             LAYOUT_UNDEFINED,
+                             LAYOUT_GENERAL,
+                             ACCESS_NONE,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_TOP_OF_PIPE,
+                             STAGE_FRAGMENT_SHADER);
     }
     /*
     CLEAR IMAGES
     */
     cmd.clear_image(ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_GENERAL, ASPECT_COLOR, Vec4(0.0));
+    cmd.clear_image(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, ASPECT_COLOR, Vec4(0.0));
     /*
     POPULATE AUXILIAR IMAGES WITH DENSITY
     */
@@ -160,12 +203,6 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
 
     if (scene->get_active_camera() && scene->get_active_camera()->is_active())
     {
-
-        ShaderPass* shaderPass = m_shaderPasses[0];
-        // Bind pipeline
-        cmd.bind_shaderpass(*shaderPass);
-        // GLOBAL LAYOUT BINDING
-        cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {0, 0});
 
         unsigned int mesh_idx = 0;
         for (Mesh* m : scene->get_meshes())
@@ -179,6 +216,12 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                     if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE)
                     {
 
+                        ShaderPass* shaderPass = m_shaderPasses[0];
+                        // Bind pipeline
+                        cmd.bind_shaderpass(*shaderPass);
+                        // GLOBAL LAYOUT BINDING
+                        cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {0, 0});
+
                         // PER OBJECT LAYOUT BINDING
                         uint32_t objectOffset = currentFrame.uniformBuffers[1].strideSize * mesh_idx;
                         cmd.bind_descriptor_set(m_descriptors[currentFrame.index].objectDescritor, 1, *shaderPass, {objectOffset, objectOffset});
@@ -187,6 +230,25 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                         auto g = m->get_geometry();
                         cmd.draw_geometry(*get_VAO(g));
 
+                        cmd.end_renderpass(m_renderpass, m_framebuffers[0]);
+
+                        /*
+                        DISPATCH COMPUTE FOR POPULATING FINAL PERCEIVED DENSITY IMAGE
+                        */
+
+                        ShaderPass* shPass = m_shaderPasses[1];
+                        cmd.bind_shaderpass(*shPass);
+
+                        cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shPass, {0, 0}, BINDING_TYPE_COMPUTE);
+                        cmd.bind_descriptor_set(
+                            m_descriptors[currentFrame.index].objectDescritor, 1, *shPass, {objectOffset, objectOffset}, BINDING_TYPE_COMPUTE);
+
+                        // Dispatch the compute shader
+                        const uint32_t WORK_GROUP_SIZE = 4;
+                        uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
+                        gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
+                        cmd.dispatch_compute({gridSize, gridSize, gridSize});
+
                         break;
                     }
                 }
@@ -194,63 +256,12 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
             mesh_idx++;
         }
     }
-
-    cmd.end_renderpass(m_renderpass, m_framebuffers[0]);
-
-    /*
-    GENERATE MIPMAPS FOR UPPER DENSITY LEVELS
-    */
-    // cmd.pipeline_barrier(ResourceManager::HAIR_DENSITY_VOLUME,
-    //                      LAYOUT_GENERAL,
-    //                      LAYOUT_TRANSFER_DST_OPTIMAL,
-    //                      ACCESS_SHADER_WRITE,
-    //                      ACCESS_TRANSFER_READ,
-    //                      STAGE_COMPUTE_SHADER,
-    //                      STAGE_TRANSFER);
-
-    // cmd.generate_mipmaps(ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_TRANSFER_DST_OPTIMAL, LAYOUT_GENERAL, FILTER_NEAREST);
-
-    /*
-    DISPATCH COMPUTE FOR POPULATING FINAL PERCEIVED DENSITY IMAGE
-    */
-
-    // ShaderPass* mergePass = m_shaderPasses["merge"];
-    // cmd.bind_shaderpass(*mergePass);
-
-    // cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *mergePass, {0, 0}, BINDING_TYPE_COMPUTE);
-
-    // // Dispatch the compute shader
-    // const uint32_t WORK_GROUP_SIZE = 4;
-    // uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
-    // gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
-    // cmd.dispatch_compute({gridSize, gridSize, gridSize});
 }
-
-// void HairVoxelizationPass::resize_attachments() {
-//     for (Graphics::Framebuffer& fb : m_framebuffers)
-//         fb.cleanup();
-//     for (Graphics::Image* img : m_outAttachments)
-//         img->cleanup();
-//     for (Graphics::Image& img : m_interAttachments)
-//         img.cleanup();
-//     create_voxelization_image();
-//     create_framebuffer();
-
-//     for (size_t i = 0; i < m_descriptors.size(); i++)
-//     {
-//         // Voxelization Image
-//         m_descriptors[i].globalDescritor.update(m_outAttachments[0], LAYOUT_GENERAL, 6, UNIFORM_STORAGE_IMAGE);
-// #ifdef USE_IMG_ATOMIC_OPERATION
-//         // Voxelization Aux.Images
-//         std::vector<Graphics::Image> auxImages = {m_interAttachments[0], m_interAttachments[1], m_interAttachments[2]};
-//         m_descriptors[i].globalDescritor.update(auxImages, LAYOUT_GENERAL, 7, UNIFORM_STORAGE_IMAGE);
-//         m_descriptors[i].globalDescritor.update(auxImages, LAYOUT_GENERAL, 8);
-// #endif
-//     }
-// }
 
 void HairVoxelizationPass::cleanup() {
     ResourceManager::HAIR_DENSITY_VOLUME.cleanup();
+    ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME.cleanup();
+    m_directionsBuffer.cleanup();
     GraphicPass::cleanup();
 }
 } // namespace Core

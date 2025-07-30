@@ -19,11 +19,6 @@ namespace Core {
 
 class HairVoxelizationPass final : public GraphicPass
 {
-#ifdef USE_IMG_ATOMIC_OPERATION
-    const uint16_t RESOURCE_IMAGES = 4;
-#else
-    const uint16_t RESOURCE_IMAGES = 1;
-#endif
 
     /*Descriptors*/
     struct FrameDescriptors {
@@ -32,8 +27,10 @@ class HairVoxelizationPass final : public GraphicPass
     };
     std::vector<FrameDescriptors> m_descriptors;
 
+    const uint32_t MAX_DIRECTIONS = 32; 
+    Graphics::Buffer m_directionsBuffer;
+
     void create_voxelization_image();
-    void setup_material_descriptor(IMaterial* mat, uint32_t meshIdx);
 
   public:
    

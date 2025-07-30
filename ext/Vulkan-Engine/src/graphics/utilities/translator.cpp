@@ -85,7 +85,9 @@ VkDescriptorType get(UniformDataType uniformDataType) {
     case UniformDataType::UNIFORM_ACCELERATION_STRUCTURE:
         return VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     case UniformDataType::UNIFORM_STORAGE_IMAGE:
-        return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    case UniformDataType::UNIFORM_STORAGE_BUFFER:
+    return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     default:
         throw std::invalid_argument("VKEngine error: Unknown UniformDataType");
     }
