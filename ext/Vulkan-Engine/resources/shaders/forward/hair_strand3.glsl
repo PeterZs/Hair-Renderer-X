@@ -117,6 +117,7 @@ void main() {
 #include shadow_mapping.glsl
 #include reindhart.glsl
 #include BRDFs/hair_BSDF.glsl
+#include sh.glsl
 
 //Input
 layout(location = 0) in vec3 g_pos;
@@ -135,6 +136,7 @@ layout(set = 0, binding = 4) uniform samplerCube irradianceMap;
 layout(set = 0, binding = 7) uniform sampler3D DpTex;
 layout(set = 0, binding = 8) uniform sampler2D attTexFront;
 layout(set = 0, binding = 9) uniform sampler2D attTexBack;
+layout(set = 0, binding = 10) uniform sampler3D hairVoxels;
 
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
@@ -180,28 +182,7 @@ vec3 computeAmbient(vec3 n) {
                 s, 0.0, c);
         vec3 rotatedNormal = normalize(rotationY * n);
 
-        // ambient = evalMarschnerLookupBSDF(
-        //         rotatedNormal, 
-        //         normalize(-g_pos),
-        //         texture(irradianceMap, rotatedNormal).rgb*scene.ambientIntensity,
-        //         bsdf, 
-        //         mTex,
-        //         nTex1,
-        //         nTex2,
-        //         GITex,
-        //         mGITex,
-        //         nGITex1,
-        //         nGITex2,
-        //         vec3(0.5),
-        //         vec3(0.5),
-        //         0.1,
-        //         material.r, 
-        //         false, 
-        //         material.trt,
-        //         material.useScatter);
-
-
-        // ambient = (scene.ambientIntensity * scene.ambientColor) ;
+      
     }else{
         ambient = (scene.ambientIntensity * scene.ambientColor) ;
     }
@@ -304,6 +285,7 @@ void main() {
                 DpTex,
                 attTexBack,
                 attTexFront,
+                hairVoxels,
                 material.r, 
                 material.tt, 
                 material.trt);

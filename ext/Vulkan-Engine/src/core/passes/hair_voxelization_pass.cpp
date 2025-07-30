@@ -188,7 +188,14 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                              ACCESS_SHADER_WRITE,
                              STAGE_TOP_OF_PIPE,
                              STAGE_FRAGMENT_SHADER);
-    }
+    } else
+        cmd.pipeline_barrier(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_FRAGMENT_SHADER,
+                             STAGE_COMPUTE_SHADER);
     /*
     CLEAR IMAGES
     */
@@ -256,6 +263,14 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
             mesh_idx++;
         }
     }
+
+    cmd.pipeline_barrier(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME,
+                         LAYOUT_GENERAL,
+                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
+                         STAGE_COMPUTE_SHADER,
+                         STAGE_FRAGMENT_SHADER);
 }
 
 void HairVoxelizationPass::cleanup() {

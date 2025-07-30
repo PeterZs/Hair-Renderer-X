@@ -185,6 +185,7 @@ vec3 evalHairBSDF(
     sampler3D DpTex,
     sampler2D backAttTex,
     sampler2D frontAttTex,
+    sampler3D hairVoxels,
     bool r,
     bool tt,
     bool trt

@@ -96,6 +96,7 @@ void ForwardPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
     LayoutBinding DpBinding(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 7);
     LayoutBinding hairFrontAttBinding(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 8);
     LayoutBinding hairBackAttBinding(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 9);
+    LayoutBinding hairVoxels(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_FRAGMENT, 10);
     m_descriptorPool.set_layout(GLOBAL_LAYOUT,
                                 {camBufferBinding,
                                  sceneBufferBinding,
@@ -106,7 +107,8 @@ void ForwardPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
                                  noiseBinding,
                                  DpBinding,
                                  hairFrontAttBinding,
-                                 hairBackAttBinding});
+                                 hairBackAttBinding,
+                                 hairVoxels});
 
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 0);
@@ -144,10 +146,10 @@ void ForwardPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
             get_image(ResourceManager::BLUE_NOISE_TEXTURE), LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 6);
         m_descriptorPool.set_descriptor_write(
             get_image(ResourceManager::HAIR_FAR_FIELD_DIST), LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 7);
-            m_descriptorPool.set_descriptor_write(
-                &ResourceManager::HAIR_FRONT_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 8);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 8);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 9);
         m_descriptorPool.set_descriptor_write(
-            &ResourceManager::HAIR_BACK_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 9);
+            &ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 10, UNIFORM_STORAGE_IMAGE);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
