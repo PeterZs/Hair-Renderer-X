@@ -91,18 +91,14 @@ vec3 computeAb(vec3 a_b, vec3 a_f) {
     vec3 abCubed = a_b * a_b * a_b;
 
     vec3 A1 = (a_b * afSqr) / oneMinusAfSqr;
-    vec3 A3 = (abCubed * afSqr) / (oneMinusAfSqr * oneMinusAfSqr * oneMinusAfSqr);
+    vec3 A3 = (abCubed * afSqr) / (oneMinusAfSqr * oneMinusAfSqr);
 
     vec3 Ab = A1 + A3;
     return Ab;
 }
 
-float I_b(float phi) {
-    return phi > (PI * 0.5) ? 1.0 : 0.0;
-}
-float I_f(float phi) {
-    return phi < (PI * 0.5) ? 1.0 : 0.0;
-}
+
+
 
 vec3 evalDirectHairBSDF(
     float thI,
@@ -185,7 +181,7 @@ vec3 evalHairBSDF(
     sampler3D DpTex,
     sampler2D backAttTex,
     sampler2D frontAttTex,
-    sampler3D hairVoxels,
+    float transHairsCount,
     bool r,
     bool tt,
     bool trt
@@ -218,42 +214,37 @@ vec3 evalHairBSDF(
 
     //////////////////////////////////////////////////////////////////////////
 
+    float hairsInFront = directFraction;
+    vec3 sigma2F = spread; 
+    vec3 transF = transDirect; 
+
+
+    //////////////////////////////////////////////////////////////////////////
+
+    //Declare lobes
+
     vec3 color = vec3(0.0);
-    vec3 direct = vec3(0.0);
-    vec3 SBack = vec3(0.0);
-    vec3 fGlobal = vec3(0.0);
+
+    vec3 fDirect = vec3(0.0);
+    vec3 fDirectS = vec3(0.0);
+    vec3 fDirectB = vec3(0.0);
+
+    vec3 fScatter = vec3(0.0);
+    vec3 fScatterS = vec3(0.0);
+    vec3 fScatterB = vec3(0.0);
+   
+    //Attenuation over fiber
+
+    float idx_thD = abs(thD * ONE_OVER_PI_HALF);
+    vec3 a_f = texture(frontAttTex, vec2(idx_thD, 0.5)).rgb;
+    vec3 a_b = texture(backAttTex, vec2(idx_thD, 0.5)).rgb;
 
     //////////////////////////////////////////////////////////////////////////
-	// Local Scattering (Back)
+	// Compute S terms (direct + scatter)
 	//////////////////////////////////////////////////////////////////////////
 
-    if(bsdf.useScatter) {
-
-        float idx_thI = abs(thI * ONE_OVER_PI_HALF);
-        // float idx_thI = 0.1;
-        vec3 a_f = texture(frontAttTex, vec2(idx_thI, 0.5)).rgb;
-        vec3 a_b = texture(backAttTex, vec2(idx_thI, 0.5)).rgb;
-
-        vec3 Ab = computeAb(a_b, a_f);
-        vec3 sigB = computeBackStrDev(a_b, a_f, betas[2], betas[1]);
-
-        float cosThetaI = cos(thI);
-        float cos2ThetaI = cosThetaI * cosThetaI;
-
-        float mu = thR + thI;
-        vec3 sigma2 = sigB * sigB;
-        vec3 Gb = g(mu, sigma2);
-
-    // Final lobe
-    // SBack = (I_b(phi) / (PI * cos2ThetaI)) * bsdf.density * Ab * Gb;
-        SBack = (bsdf.density * Ab * Gb) / ((PI * cos2ThetaI));
-    // SBack =    Ab * Gb;
-
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-	// Direct Illumination
-	//////////////////////////////////////////////////////////////////////////
+    // F Direct S
+    /////////////////////////////////////////
 
     //Longitudinal
     //-----------------------------------------------
@@ -269,14 +260,6 @@ vec3 evalHairBSDF(
     //(phi between 0 and pi)
     //(cos between 0 and 1)
     vec3 Dp = texture(DpTex, vec3(phi * ONE_OVER_PI, cos(thD), azBeta)).rgb;
-
-    /*
-   EPIC GAMES FITTING OF Far-Field Distribution
-    */
-    // vec3 Dp;
-    // Dp.x = 0.25 * sqrt(clamp(0.5 + 0.5 * cosPhi, 0.0, 1.0));
-    // Dp.y = exp(-3.65 * cosPhi - 3.98);
-    // Dp.z = exp(17 * cosPhi - 16.78);
 
     float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     vec3 nR = vec3(aR * Dp.x);
@@ -296,29 +279,62 @@ vec3 evalHairBSDF(
     vec3 TT = tt ? mTT * nTT : vec3(0.0);
     vec3 TRT = trt ? mTRT * nTRT : vec3(0.0);
 
-    direct = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
+    fDirectS = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
 
-    color += (direct + SBack) * directFraction;
+    // F Scatter S
+    /////////////////////////////////////////
+    if(bsdf.useScatter) {
+
+        // TBD ...
+        fScatterS = vec3(0.0);
+
+    }
 
     //////////////////////////////////////////////////////////////////////////
-	// Global Scattering
-	//////////////////////////////////////////////////////////////////////////
-
+	// Compute Back terms (direct + scatter)
+	/////////////////////////////////////////////////////////////////////////
+  
+        vec3 Ab = computeAb(a_b, a_f);
     if(bsdf.useScatter) {
 
 
-        // float cosThetaI = cos(thI);
-        // float cos2ThetaI = cosThetaI * cosThetaI;
-        // float mu = thR + thI;
-        // vec3 Gb = g(mu,  spread);
-        // fGlobal = transDirect * ((bsdf.density * Gb) / ((PI * cos2ThetaI))+ SBack);
-    // ..........
+        vec3 sigB = computeBackStrDev(a_b, a_f, betas[2], betas[1]);
+        vec3 sigma2B = sigB * sigB;
+
+        float cosThetaD = cos(thD);
+        float cos2ThetaD = cosThetaD * cosThetaD;
+
+        float mu = thR + thI;
+
+
+        // F Direct Back
+        /////////////////////////////////////////
+
+        vec3 Gdb = g(mu, sigma2B);
+        fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD));
+
+         // F Scatter Back
+        /////////////////////////////////////////
+
+        vec3 Gsb = g(mu, sigma2B + sigma2F);
+        fDirectB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD));
+
+
     }
 
+    //////////////////////////////////////////////////////////////////////////
+	// Build lobes
+	////////////////////////////////////////////////////////////////////////
+
+    fDirect = directFraction * (fDirectS + bsdf.density * fDirectB);
+    // fScatter = (transF - vec3(directFraction)) * bsdf.density * (fScatterS + PI *bsdf.density * fScatterB);
+    color = (fDirect + fScatter) * cos(thI);
+
 	//////////////////////////////////////////////////////////////////////////
-    color += fGlobal;
-    // return vec3(directFraction);
+   
+   return Ab;
     return color * li;
+
 
     // if( idx_thI > 0.5) return vec3(1.0,0.0,0.0);
     //  if( idx_thI  < 0.0) return vec3(0.0,0.0,1.0);

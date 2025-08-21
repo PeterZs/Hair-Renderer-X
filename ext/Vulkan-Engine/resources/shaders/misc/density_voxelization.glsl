@@ -26,8 +26,8 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
 
 void main() {
 
-    // v_pos = (object.model * vec4(pos, 1.0)).xyz;
-    v_pos = pos;
+    v_pos = (object.model * vec4(pos, 1.0)).xyz;
+    // v_pos = pos;
 
     
     vec3 ndc = mapToZeroOne(v_pos, object.minCoord.xyz, object.maxCoord.xyz) ;

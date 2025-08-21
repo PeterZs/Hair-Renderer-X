@@ -116,8 +116,8 @@ void main() {
 #include utils.glsl
 #include shadow_mapping.glsl
 #include reindhart.glsl
-#include BRDFs/hair_BSDF.glsl
 #include sh.glsl
+#include BRDFs/hair_BSDF.glsl
 
 //Input
 layout(location = 0) in vec3 g_pos;
@@ -160,11 +160,6 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
 
 } material;
 
-// layout(set = 2, binding = 0) uniform sampler3D DpTex;
-// layout(set = 2, binding = 1) uniform sampler2D attTexFront;
-// layout(set = 2, binding = 2) uniform sampler2D attTexBack;
-// layout(set = 2, binding = 3) uniform sampler2D Ng;
-
 HairBSDF bsdf;
 
 layout(location = 0) out vec4 fragColor;
@@ -187,6 +182,22 @@ vec3 computeAmbient(vec3 n) {
         ambient = (scene.ambientIntensity * scene.ambientColor) ;
     }
     return ambient;
+}
+
+//Anysotropic. Decoding from a L1 SH
+float getNumberOfStrands(vec3 worldPos, vec3 lightWorldPos) {
+    vec3 dir = normalize(lightWorldPos - worldPos);
+
+    // Compute voxel UVW coords in object space
+    vec3 uvw = (worldPos - object.minCoord.xyz) / (object.maxCoord.xyz - object.minCoord.xyz);
+    uvw = clamp(uvw, 0.0, 0.9999);
+
+    ivec3 coord = ivec3(uvw * vec3(textureSize(hairVoxels, 0)));
+
+    // Fetch SH L1 and decode
+    vec4 SHL1 = texelFetch(hairVoxels, coord, 0);
+
+    return decodeScalarFromSHL1(SHL1, dir);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -241,6 +252,8 @@ vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap
 }
 
 void main() {
+    //Number of traversed strands
+    float nStrands;
 
     //BSDF setup ............................................................
     bsdf.tangent = normalize(g_dir);
@@ -274,6 +287,7 @@ void main() {
                 if(scene.lights[i].shadowType == 1) //VSM   
                     shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
             }
+            nStrands = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position,1.0)).xyz );
             vec3 lighting = evalHairBSDF(
                 normalize(scene.lights[i].position.xyz - g_pos), 
                 normalize(-g_pos),
@@ -285,7 +299,7 @@ void main() {
                 DpTex,
                 attTexBack,
                 attTexFront,
-                hairVoxels,
+                nStrands,
                 material.r, 
                 material.tt, 
                 material.trt);
@@ -309,6 +323,7 @@ void main() {
         color = f * color + (1 - f) * scene.fogColor.rgb;
     }
 
+//    color = vec3(nStrands/100.0,0.0,0.0);
 
     fragColor = vec4(color, 1.0);
      // check whether result is higher than some threshold, if so, output as bloom threshold color

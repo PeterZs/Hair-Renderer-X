@@ -231,10 +231,10 @@ void ResourceManager::update_object_data(Graphics::Device* const device,
                     objectData.model        = m->get_model_matrix();
                     objectData.otherParams1 = {m->affected_by_fog(), m->receive_shadows(), m->cast_shadows(), false};
                     objectData.otherParams2 = {m->is_selected(), m->get_bounding_volume()->center};
-                    // objectData.maxCoord     = objectData.model * Vec4(m->get_bounding_volume()->maxCoords, 1.0);
-                    // objectData.minCoord     = objectData.model * Vec4(m->get_bounding_volume()->minCoords, 1.0);
-                    objectData.maxCoord     =  Vec4(m->get_bounding_volume()->maxCoords, 1.0);
-                    objectData.minCoord     =  Vec4(m->get_bounding_volume()->minCoords, 1.0);
+                    objectData.maxCoord     = objectData.model * Vec4(m->get_bounding_volume()->maxCoords, 1.0);
+                    objectData.minCoord     = objectData.model * Vec4(m->get_bounding_volume()->minCoords, 1.0);
+                    // objectData.maxCoord     =  Vec4(m->get_bounding_volume()->maxCoords, 1.0);
+                    // objectData.minCoord     =  Vec4(m->get_bounding_volume()->minCoords, 1.0);
                     currentFrame->uniformBuffers[OBJECT_LAYOUT].upload_data(&objectData, sizeof(Graphics::ObjectUniforms), objectOffset);
 
                     for (size_t i = 0; i < m->get_num_geometries(); i++)
