@@ -105,7 +105,7 @@ vec3 evalDirectHairBSDF(
     float thR,
     float phiD,
     HairBSDF bsdf,
-    sampler3D DpTex,
+    sampler2D DpTex,
     bool r,
     bool tt,
     bool trt
@@ -140,7 +140,7 @@ vec3 evalDirectHairBSDF(
     //Far-Field Distribution
     //(phi between 0 and pi)
     //(cos between 0 and 1)
-    vec3 Dp = texture(DpTex, vec3(phiD * ONE_OVER_PI, cos(thD), azBeta)).rgb;
+    vec3 Dp = texture(DpTex, vec2(phiD * ONE_OVER_PI, cos(thD))).rgb;
 
     // float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     float cosThetaD = cos(thI) * cos(thR) + sin(thI) * sin(thR) * cos(phiD);
@@ -178,7 +178,7 @@ vec3 evalHairBSDF(
     vec3 transDirect,
     vec3 spread,
     float directFraction,
-    sampler3D DpTex,
+    sampler2D DpTex,
     sampler2D backAttTex,
     sampler2D frontAttTex,
     float transHairsCount,
@@ -259,7 +259,7 @@ vec3 evalHairBSDF(
     //Far-Field Distribution
     //(phi between 0 and pi)
     //(cos between 0 and 1)
-    vec3 Dp = texture(DpTex, vec3(phi * ONE_OVER_PI, cos(thD), azBeta)).rgb;
+    vec3 Dp = texture(DpTex, vec2(phi * ONE_OVER_PI, cos(thD))).rgb;
 
     float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     vec3 nR = vec3(aR * Dp.x);
@@ -331,8 +331,10 @@ vec3 evalHairBSDF(
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
-   
-   return Ab;
+   if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
+   return vec3(1.0);
+//    return Ab;
+return vec3(0.0);
     return color * li;
 
 

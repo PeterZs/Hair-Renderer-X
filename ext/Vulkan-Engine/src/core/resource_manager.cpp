@@ -58,7 +58,8 @@ void ResourceManager::init_basic_resources(Graphics::Device* const device) {
         settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
         HAIR_FAR_FIELD_DIST = new TextureHDR(settings);
 
-        Tools::Loaders::load_3D_texture(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
+        // Tools::Loaders::load_3D_texture(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
+        Tools::Loaders::load_HDRi(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/DpNorm.hdr");
     }
     upload_texture_data(device, HAIR_FAR_FIELD_DIST);
 }

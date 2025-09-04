@@ -133,7 +133,7 @@ layout(location = 8) in vec3 g_origin;
 //Uniforms
 layout(set = 0, binding = 2) uniform sampler2DArray shadowMap;
 layout(set = 0, binding = 4) uniform samplerCube irradianceMap;
-layout(set = 0, binding = 7) uniform sampler3D DpTex;
+layout(set = 0, binding = 7) uniform sampler2D DpTex;
 layout(set = 0, binding = 8) uniform sampler2D attTexFront;
 layout(set = 0, binding = 9) uniform sampler2D attTexBack;
 layout(set = 0, binding = 10) uniform sampler3D hairVoxels;
