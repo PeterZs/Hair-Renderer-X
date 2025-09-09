@@ -43,8 +43,6 @@ class HairMaterial : public IMaterial
     bool m_useScatter      = false;
     bool m_usePigmentation = true;
 
-
-
     std::unordered_map<int, ITexture*> m_textures;
     std::unordered_map<int, bool>      m_textureBindingState;
 
@@ -112,6 +110,12 @@ class HairMaterial : public IMaterial
         if (m_usePigmentation)
             return;
         m_sigma_a = sigma_a;
+    }
+    inline float get_density() const {
+        return m_density;
+    }
+    inline void set_density(float density) {
+        m_density = density;
     }
 
     inline void use_pigmentation(bool op) {

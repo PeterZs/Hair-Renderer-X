@@ -834,10 +834,15 @@ void ObjectExplorerWidget::render() {
                 {
                     mat->set_ior(ior); // Update index of refraction
                 }
+                float dens = mat->get_density();
+                if (ImGui::DragFloat("Density", &dens, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_density(dens);
+                }
                 bool scatter = mat->enable_scattering();
                 if (ImGui::Checkbox("Enable Scattering", &scatter))
                 {
-                    mat->enable_scattering(scatter); 
+                    mat->enable_scattering(scatter);
                 }
             }
 
