@@ -15,6 +15,8 @@ Graphics::Image   ResourceManager::HAIR_BACK_ATT;
 Graphics::Image   ResourceManager::HAIR_FRONT_ATT;
 Graphics::Image   ResourceManager::HAIR_DENSITY_VOLUME;
 Graphics::Image   ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME;
+Graphics::Image   ResourceManager::HAIR_NG;
+Graphics::Image   ResourceManager::HAIR_NG_TRT;
 Core::Mesh*       ResourceManager::VIGNETTE = nullptr;
 
 void ResourceManager::init_basic_resources(Graphics::Device* const device) {

@@ -295,7 +295,8 @@ vec3 evalHairBSDF(
 	// Compute Back terms (direct + scatter)
 	/////////////////////////////////////////////////////////////////////////
 
-        vec3 Ab = computeAb(a_b, a_f);
+    vec3 Ab = computeAb(a_b, a_f);
+        // vec3 Ab = computeAb(vec3(0.25), vec3(bsdf.density));
     if(bsdf.useScatter) {
 
 
@@ -334,12 +335,11 @@ vec3 evalHairBSDF(
 	//////////////////////////////////////////////////////////////////////////
 //    if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
 //    return vec3(1.0);
-    // return  Ab;
+    return  Ab;
 // if(idx_thD < 0.0 ) return vec3(1.0,0.0,0.0);
 //    return vec3(idx_thD);
 // return vec3(0.0);
-return vec3(transHairsCount);
-    return color * li;
+    // return color * li;
 
 
     // if( idx_thI > 0.5) return vec3(1.0,0.0,0.0);

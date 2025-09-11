@@ -51,6 +51,8 @@ class ResourceManager
     static Graphics::Image   HAIR_FRONT_ATT;
     static Graphics::Image   HAIR_DENSITY_VOLUME;
     static Graphics::Image   HAIR_PERECEIVED_DENSITY_VOLUME;
+    static Graphics::Image   HAIR_NG;
+    static Graphics::Image   HAIR_NG_TRT;
     /*
     Vignette for RTT
     */
