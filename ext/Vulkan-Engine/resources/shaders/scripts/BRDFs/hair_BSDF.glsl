@@ -236,7 +236,7 @@ vec3 evalHairBSDF(
 
     //Attenuation over fiber
 
-    float idx_thD = clamp(abs(thD * ONE_OVER_PI_HALF),0.07,1.0);
+    float idx_thD = clamp(abs(thD * ONE_OVER_PI_HALF),0.01,1.0);
     vec3 a_f = texture(frontAttTex, vec2(idx_thD, 0.5)).rgb;
     vec3 a_b = texture(backAttTex, vec2(idx_thD, 0.5)).rgb;
 
@@ -333,13 +333,17 @@ vec3 evalHairBSDF(
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
+ return Ab;
 //    if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
 //    return vec3(1.0);
-    return  Ab;
+if(length(fDirectS) > length(vec3(1.2)) )
+return vec3(1.0,0.0,0.0);
+    return  vec3(0.0,1.0,0.0);
 // if(idx_thD < 0.0 ) return vec3(1.0,0.0,0.0);
 //    return vec3(idx_thD);
 // return vec3(0.0);
-    // return color * li;
+
+     return color * li;
 
 
     // if( idx_thI > 0.5) return vec3(1.0,0.0,0.0);

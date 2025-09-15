@@ -37,33 +37,42 @@ HairBSDF bsdf;
 
 vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere) {
 
+    const float dPhiI   = (0.5 * PI) / float(steps - 1);
     const float dThetaR = (0.5 * PI) / float(steps - 1);
-    const float dPhiD   = (0.5 * PI) / float(steps - 1);
+    const float dPhiR   = (0.5 * PI) / float(steps - 1);
 
     vec3 fSum = vec3(0.0);
 
     for (uint x = 0; x < steps; ++x)
     {
-        float thetaR    = float(x) * (0.5 * PI) / float(steps - 1); // From 0 to 90º
-        float cosThetaR = cos(thetaR);
+        float phiI = float(x) / float(steps - 1) * (0.5 * PI);
 
         for (uint y = 0; y < steps; ++y)
         {
-            float phiD;
-            if (hemisphere == 0)
-            {
-                phiD = 0.5 * PI + float(y) * (0.5 * PI) / float(steps - 1); // From 90º to 180º
-            } else
-            {
-                phiD = float(y) * (0.5 * PI) / float(steps - 1); // From 0º to 90º
-            }
+            float thetaR    = float(y)  / float(steps - 1) * (0.5 * PI); // From 0 to 90º
+            float cosThetaR = cos(thetaR);
 
-            vec3 S = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, false, true, true);
-            fSum += S * cosThetaR * dThetaR * dPhiD * 4.0;
+            for (uint z = 0; z < steps; ++z)
+            {
+                float phiR;
+                if (hemisphere == 0)
+                {
+                    phiR = (0.5 * PI) + float(z) / float(steps - 1) * (0.5 * PI); // From 90º to 180º
+                } else
+                {
+                    phiR = float(z) / float(steps - 1) * (0.5 * PI); // From 0º to 90º
+                }
+
+                float phiD = abs(phiI - phiR);
+
+                vec3 S = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, false, true, true);
+                // vec3 S = vec3(1.0);
+                fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
+            }
         }
     }
 
-    return fSum;
+    return fSum / PI;
 }
 
 void main() {

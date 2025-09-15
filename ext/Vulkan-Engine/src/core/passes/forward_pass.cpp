@@ -97,6 +97,8 @@ void ForwardPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
     LayoutBinding hairFrontAttBinding(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 8);
     LayoutBinding hairBackAttBinding(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 9);
     LayoutBinding hairVoxels(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_FRAGMENT, 10);
+    LayoutBinding hairng(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 11);
+    LayoutBinding hairngt(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_FRAGMENT, 12);
     m_descriptorPool.set_layout(GLOBAL_LAYOUT,
                                 {camBufferBinding,
                                  sceneBufferBinding,
@@ -108,7 +110,9 @@ void ForwardPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
                                  DpBinding,
                                  hairFrontAttBinding,
                                  hairBackAttBinding,
-                                 hairVoxels});
+                                 hairVoxels,
+                                 hairng,
+                                 hairngt});
 
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 0);
@@ -150,6 +154,8 @@ void ForwardPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_ATT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 9);
         m_descriptorPool.set_descriptor_write(
             &ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 10, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_NG, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 11);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_NG_TRT, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 12);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);

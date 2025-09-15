@@ -137,6 +137,8 @@ layout(set = 0, binding = 7) uniform sampler3D DpTex;
 layout(set = 0, binding = 8) uniform sampler2D attTexFront;
 layout(set = 0, binding = 9) uniform sampler2D attTexBack;
 layout(set = 0, binding = 10) uniform sampler3D hairVoxels;
+layout(set = 0, binding = 11) uniform sampler2D hairNgTex;
+layout(set = 0, binding = 12) uniform sampler2D hairNgtTex;
 
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
