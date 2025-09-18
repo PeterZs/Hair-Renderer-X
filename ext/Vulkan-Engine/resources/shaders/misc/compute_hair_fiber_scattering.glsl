@@ -65,8 +65,7 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere) {
 
                 float phiD = abs(phiI - phiR);
 
-                vec3 S = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, false, true, true);
-                // vec3 S = vec3(1.0);
+                vec3 S = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, true, true, true);
                 fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
             }
         }

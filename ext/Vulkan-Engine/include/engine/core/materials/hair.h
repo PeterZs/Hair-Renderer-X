@@ -110,12 +110,14 @@ class HairMaterial : public IMaterial
         if (m_usePigmentation)
             return;
         m_sigma_a = sigma_a;
+        m_isDirty = true;
     }
     inline float get_density() const {
         return m_density;
     }
     inline void set_density(float density) {
         m_density = density;
+        m_isDirty = true;
     }
 
     inline void use_pigmentation(bool op) {
@@ -123,12 +125,14 @@ class HairMaterial : public IMaterial
     }
     inline bool use_pigmentation() {
         return m_usePigmentation;
+        m_isDirty = true;
     }
     inline float get_thickness() const {
         return m_thickness;
     }
     inline void set_thickness(float thickness) {
         m_thickness = thickness;
+        m_isDirty   = true;
     }
 
     // Primary reflection toggle
@@ -172,6 +176,7 @@ class HairMaterial : public IMaterial
     }
     inline void enable_scattering(bool e) {
         m_useScatter = e;
+        m_isDirty    = true;
     }
     // Secoundary reflection toggle
     inline bool get_TRT() const {

@@ -301,6 +301,8 @@ void main() {
                 DpTex,
                 attTexBack,
                 attTexFront,
+                hairNgTex,
+                hairNgtTex,
                 nStrands,
                 material.r, 
                 material.tt, 

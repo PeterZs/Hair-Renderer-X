@@ -80,7 +80,7 @@ void main() {
         // float phi_p = 0.5 * PI + float(x) * (0.5 * PI) / float(steps - 1); // From 90º to 180º
         float phi_p = (0.5*PI) + (float(x) / float(steps-1)) * (0.5*PI);
         // float phi_D =  phi_p - phi;
-        float phi_D =  phi - phi_p;
+        float phi_D =  abs(phi - phi_p);
 
         vec3 Dp = texture(DpTex, vec3(phi_D * ONE_OVER_PI, cos(thD),bsdf.azBeta)).rgb;
 

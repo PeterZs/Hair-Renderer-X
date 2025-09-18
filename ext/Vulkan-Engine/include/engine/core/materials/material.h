@@ -38,7 +38,7 @@ class IMaterial
     friend class Renderer;
 
   public:
-    enum Type: uint32_t
+    enum Type : uint32_t
     {
         UNLIT_TYPE     = 0,
         PHONG_TYPE     = 1,
@@ -100,6 +100,12 @@ class IMaterial
 
     virtual inline Graphics::DescriptorSet& get_texture_descriptor() {
         return m_textureDescriptor;
+    }
+    virtual bool dirty() const {
+        return m_isDirty;
+    }
+    virtual void dirty(bool op) {
+        m_isDirty = op;
     }
 
   private:

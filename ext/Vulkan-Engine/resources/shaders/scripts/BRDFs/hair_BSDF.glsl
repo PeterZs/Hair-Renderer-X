@@ -181,6 +181,8 @@ vec3 evalHairBSDF(
     sampler3D DpTex,
     sampler2D backAttTex,
     sampler2D frontAttTex,
+    sampler2D ngTex,
+    sampler2D ngtTex,
     float transHairsCount,
     bool r,
     bool tt,
@@ -286,8 +288,38 @@ vec3 evalHairBSDF(
     /////////////////////////////////////////
     if(bsdf.useScatter) {
 
-        // TBD ...
-        fScatterS = vec3(0.0);
+        //Longitudinal
+        //-----------------------------------------------
+
+        float mgRr = g(thH - shifts.x, betas.x + sigma2F.r);
+        float mgRg = g(thH - shifts.x, betas.x + sigma2F.g);
+        float mgRb = g(thH - shifts.x, betas.x + sigma2F.b);
+        float mgTTr = g(thH - shifts.y, betas.y + sigma2F.r);
+        float mgTTg = g(thH - shifts.y, betas.y + sigma2F.g);
+        float mgTTb = g(thH - shifts.y, betas.y + sigma2F.b);
+        float mgTRTr = g(thH - shifts.z, betas.z + sigma2F.r);
+        float mgTRTg = g(thH - shifts.z, betas.z + sigma2F.g);
+        float mgTRTb = g(thH - shifts.z, betas.z + sigma2F.b);
+
+        vec3 mgR = vec3(mgRr,mgRg,mgRb);
+        vec3 mgTT =vec3(mgTTr,mgTTg,mgTTb);
+        vec3 mgTRT =vec3(mgTRTr,mgTRTg,mgTRTb);
+
+        //Azimuthal
+        //-----------------------------------------------
+
+        vec4 ngSample0 = texture(ngTex,vec2(phi * ONE_OVER_PI, abs(thD * ONE_OVER_PI_HALF)));
+        vec3 ngSample1 = texture(ngtTex,vec2(phi * ONE_OVER_PI,abs(thD * ONE_OVER_PI_HALF))).rgb;
+
+        vec3 ngR = ngSample0.aaa;
+        vec3 ngTT = ngSample0.rgb;
+        vec3 ngTRT = ngSample1;
+
+        vec3 Rg = r ? mgR * ngR : vec3(0.0);
+        vec3 TTg = tt ? mgTT * ngTT : vec3(0.0);
+        vec3 TRTg = trt ? mgTRT * ngTRT : vec3(0.0);
+
+        fScatterS = (Rg * bsdf.Rpower + TTg * bsdf.TTpower + TRTg * bsdf.TRTpower) / (cos(thD) * cos(thD));
 
     }
 
@@ -333,7 +365,8 @@ vec3 evalHairBSDF(
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
- return Ab;
+ return fScatterS;
+     return color * li;
 //    if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
 //    return vec3(1.0);
 if(length(fDirectS) > length(vec3(1.2)) )
@@ -343,7 +376,6 @@ return vec3(1.0,0.0,0.0);
 //    return vec3(idx_thD);
 // return vec3(0.0);
 
-     return color * li;
 
 
     // if( idx_thI > 0.5) return vec3(1.0,0.0,0.0);

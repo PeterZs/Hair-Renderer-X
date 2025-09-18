@@ -170,7 +170,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                 m->get_geometry()) // Check if is inside frustrum
             {
                 auto mat = m->get_material();
-                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE)
+                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE && mat->dirty())
                 {
 
                     // Offset calculation
@@ -190,7 +190,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                     uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
                     gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
                     cmd.dispatch_compute({gridSize, 1, 1});
-                    
+
                     // --------------------------------------------------------------
 
                     shaderPass = m_shaderPasses[1];
@@ -204,6 +204,8 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
 
                     // Dispatch the compute shader
                     cmd.dispatch_compute({gridSize, gridSize, 1});
+
+                    mat->dirty(false);
 
                     break; // WIP for now compute just one hair volume AND EXIT LOOP
                 }
