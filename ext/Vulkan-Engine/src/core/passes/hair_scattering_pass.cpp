@@ -10,6 +10,11 @@ void HairScatteringPass::create_hair_scattering_images() {
     //--------------------------------------------------
 
     ResourceManager::HAIR_BACK_ATT.cleanup();
+    ResourceManager::HAIR_BACK_SHIFTS.cleanup();
+    ResourceManager::HAIR_FRONT_SHIFTS.cleanup();
+    ResourceManager::HAIR_BACK_BETAS.cleanup();
+    ResourceManager::HAIR_FRONT_BETAS.cleanup();
+    ResourceManager::HAIR_FRONT_ATT.cleanup();
 
     ImageConfig config             = {};
     config.viewType                = TEXTURE_2D;
@@ -24,10 +29,25 @@ void HairScatteringPass::create_hair_scattering_images() {
     samplerConfig.border             = BorderColor::FLOAT_OPAQUE_BLACK;
     ResourceManager::HAIR_BACK_ATT.create_sampler(samplerConfig);
 
-    ResourceManager::HAIR_FRONT_ATT.cleanup();
     ResourceManager::HAIR_FRONT_ATT = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
     ResourceManager::HAIR_FRONT_ATT.create_view(config);
     ResourceManager::HAIR_FRONT_ATT.create_sampler(samplerConfig);
+
+    ResourceManager::HAIR_BACK_SHIFTS = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
+    ResourceManager::HAIR_BACK_SHIFTS.create_view(config);
+    ResourceManager::HAIR_BACK_SHIFTS.create_sampler(samplerConfig);
+
+    ResourceManager::HAIR_FRONT_SHIFTS = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
+    ResourceManager::HAIR_FRONT_SHIFTS.create_view(config);
+    ResourceManager::HAIR_FRONT_SHIFTS.create_sampler(samplerConfig);
+
+    ResourceManager::HAIR_BACK_BETAS = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
+    ResourceManager::HAIR_BACK_BETAS.create_view(config);
+    ResourceManager::HAIR_BACK_BETAS.create_sampler(samplerConfig);
+
+    ResourceManager::HAIR_FRONT_BETAS = m_device->create_image({m_imageExtent.width, 1, 1}, config, false);
+    ResourceManager::HAIR_FRONT_BETAS.create_view(config);
+    ResourceManager::HAIR_FRONT_BETAS.create_sampler(samplerConfig);
 
     // NG textures
     //--------------------------------------------------
@@ -56,7 +76,20 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
     LayoutBinding distributionBinding(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE, 2);
     LayoutBinding NGBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 3);
     LayoutBinding NGTRTBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 4);
-    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {backImgBinding, frontImgBinding, distributionBinding, NGBinding, NGTRTBinding});
+    LayoutBinding backShiftBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 5);
+    LayoutBinding frontShiftBinging(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 6);
+    LayoutBinding backBetaBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 7);
+    LayoutBinding frontBetaBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 8);
+    m_descriptorPool.set_layout(GLOBAL_LAYOUT,
+                                {backImgBinding,
+                                 frontImgBinding,
+                                 distributionBinding,
+                                 NGBinding,
+                                 NGTRTBinding,
+                                 backShiftBinding,
+                                 frontShiftBinging,
+                                 backBetaBinding,
+                                 frontBetaBinding});
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_COMPUTE, 0);
     LayoutBinding materialBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_COMPUTE, 1);
@@ -72,6 +105,10 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
             get_image(ResourceManager::HAIR_FAR_FIELD_DIST), LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 2);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_NG, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 3, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_NG_TRT, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 4, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_SHIFTS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 5, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_SHIFTS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 6, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 7, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 8, UNIFORM_STORAGE_IMAGE);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -124,6 +161,14 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
             ResourceManager::HAIR_NG, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
         cmd.pipeline_barrier(
             ResourceManager::HAIR_NG_TRT, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_BACK_SHIFTS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_BACK_BETAS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_FRONT_BETAS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_FRONT_SHIFTS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
     }
 
     /*
@@ -153,6 +198,34 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                              STAGE_FRAGMENT_SHADER,
                              STAGE_COMPUTE_SHADER);
         cmd.pipeline_barrier(ResourceManager::HAIR_NG_TRT,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_FRAGMENT_SHADER,
+                             STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_SHIFTS,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_FRAGMENT_SHADER,
+                             STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_BETAS,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_FRAGMENT_SHADER,
+                             STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_BACK_BETAS,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_FRAGMENT_SHADER,
+                             STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_BACK_SHIFTS,
                              LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                              LAYOUT_GENERAL,
                              ACCESS_SHADER_READ,
@@ -245,6 +318,34 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                          ACCESS_SHADER_READ,
                          STAGE_COMPUTE_SHADER,
                          STAGE_FRAGMENT_SHADER);
+    cmd.pipeline_barrier(ResourceManager::HAIR_BACK_SHIFTS,
+                         LAYOUT_GENERAL,
+                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
+                         STAGE_COMPUTE_SHADER,
+                         STAGE_FRAGMENT_SHADER);
+    cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_SHIFTS,
+                         LAYOUT_GENERAL,
+                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
+                         STAGE_COMPUTE_SHADER,
+                         STAGE_FRAGMENT_SHADER);
+    cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_BETAS,
+                         LAYOUT_GENERAL,
+                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
+                         STAGE_COMPUTE_SHADER,
+                         STAGE_FRAGMENT_SHADER);
+    cmd.pipeline_barrier(ResourceManager::HAIR_BACK_BETAS,
+                         LAYOUT_GENERAL,
+                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
+                         STAGE_COMPUTE_SHADER,
+                         STAGE_FRAGMENT_SHADER);
 }
 
 void HairScatteringPass::cleanup() {
@@ -253,6 +354,10 @@ void HairScatteringPass::cleanup() {
     ResourceManager::HAIR_FRONT_ATT.cleanup();
     ResourceManager::HAIR_NG.cleanup();
     ResourceManager::HAIR_NG_TRT.cleanup();
+    ResourceManager::HAIR_BACK_SHIFTS.cleanup();
+    ResourceManager::HAIR_FRONT_SHIFTS.cleanup();
+    ResourceManager::HAIR_BACK_BETAS.cleanup();
+    ResourceManager::HAIR_FRONT_BETAS.cleanup();
 }
 
 } // namespace Core

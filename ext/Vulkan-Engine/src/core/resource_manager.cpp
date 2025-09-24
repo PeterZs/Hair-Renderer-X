@@ -17,6 +17,10 @@ Graphics::Image   ResourceManager::HAIR_DENSITY_VOLUME;
 Graphics::Image   ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME;
 Graphics::Image   ResourceManager::HAIR_NG;
 Graphics::Image   ResourceManager::HAIR_NG_TRT;
+Graphics::Image   ResourceManager::HAIR_BACK_SHIFTS;
+Graphics::Image   ResourceManager::HAIR_FRONT_SHIFTS;
+Graphics::Image   ResourceManager::HAIR_BACK_BETAS;
+Graphics::Image   ResourceManager::HAIR_FRONT_BETAS;
 Core::Mesh*       ResourceManager::VIGNETTE = nullptr;
 
 void ResourceManager::init_basic_resources(Graphics::Device* const device) {
@@ -60,7 +64,7 @@ void ResourceManager::init_basic_resources(Graphics::Device* const device) {
         settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
         HAIR_FAR_FIELD_DIST = new TextureHDR(settings);
 
-        Tools::Loaders::load_3D_texture(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/Dp3D.hdr");
+        Tools::Loaders::load_3D_texture(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/Dp.hdr");
         // Tools::Loaders::load_HDRi(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/DpNorm.hdr");
     }
     upload_texture_data(device, HAIR_FAR_FIELD_DIST);

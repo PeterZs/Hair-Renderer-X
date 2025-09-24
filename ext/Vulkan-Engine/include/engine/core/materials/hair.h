@@ -38,7 +38,7 @@ class HairMaterial : public IMaterial
     bool  m_TT       = true; // Transmitance
     float m_TTpower  = 1.0f;
     bool  m_TRT      = true; // Second reflection
-    float m_TRTpower = 2.0f;
+    float m_TRTpower = 1.0f;
     // Query
     bool m_useScatter      = false;
     bool m_usePigmentation = true;

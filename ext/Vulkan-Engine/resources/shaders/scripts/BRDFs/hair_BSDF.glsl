@@ -183,6 +183,10 @@ vec3 evalHairBSDF(
     sampler2D frontAttTex,
     sampler2D ngTex,
     sampler2D ngtTex,
+    sampler2D shiftsTexFront,
+    sampler2D shiftsTexBack,
+    sampler2D betasTexFront,
+    sampler2D betasTexBack,
     float transHairsCount,
     bool r,
     bool tt,
@@ -365,7 +369,7 @@ vec3 evalHairBSDF(
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
- return fScatterS;
+//  return fScatterS;
      return color * li;
 //    if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
 //    return vec3(1.0);
