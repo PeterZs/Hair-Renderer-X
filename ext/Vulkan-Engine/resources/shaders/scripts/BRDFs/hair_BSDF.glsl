@@ -67,10 +67,10 @@ vec3 Ap(int p, float h, float ior, float thD, vec3 sigma_a) {
 }
 
 //Local Scattering Lobe Std Dev (Dual-Scattering)
-vec3 computeBackStrDev(vec3 a_b, vec3 a_f, float beta_b, float beta_f) {
+vec3 computeBackStrDev(vec3 a_b, vec3 a_f, vec3 beta_b, vec3 beta_f) {
 
-    float beta_f2 = beta_f * beta_f;
-    float beta_b2 = beta_b * beta_b;
+    vec3 beta_f2 = beta_f * beta_f;
+    vec3 beta_b2 = beta_b * beta_b;
 
     vec3 a_b3 = a_b * a_b * a_b;
 
@@ -243,8 +243,12 @@ vec3 evalHairBSDF(
     //Attenuation over fiber
 
     float idx_thD = clamp(abs(thD * ONE_OVER_PI_HALF),0.01,1.0);
+
     vec3 a_f = texture(frontAttTex, vec2(idx_thD, 0.5)).rgb;
     vec3 a_b = texture(backAttTex, vec2(idx_thD, 0.5)).rgb;
+
+    vec3 b_f = texture(betasTexFront, vec2(idx_thD, 0.5)).rgb;
+    vec3 b_b = texture(betasTexBack, vec2(idx_thD, 0.5)).rgb;
 
     //////////////////////////////////////////////////////////////////////////
 	// Compute S terms (direct + scatter)
@@ -336,7 +340,7 @@ vec3 evalHairBSDF(
     if(bsdf.useScatter) {
 
 
-        vec3 sigB = computeBackStrDev(a_b, a_f, betas[2], betas[1]);
+        vec3 sigB = computeBackStrDev(a_b, a_f, b_b, b_f);
         vec3 sigma2B = sigB * sigB;
 
         float cosThetaD = cos(thD);
@@ -349,13 +353,13 @@ vec3 evalHairBSDF(
         /////////////////////////////////////////
 
         vec3 Gdb = g(mu, sigma2B);
-        fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD));
+        fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD))  * 1000.0;
 
          // F Scatter Back
         /////////////////////////////////////////
 
         vec3 Gsb = g(mu, sigma2B + sigma2F);
-        fDirectB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD));
+        fScatterB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD)) * 1000.0; 
 
 
     }
@@ -369,7 +373,6 @@ vec3 evalHairBSDF(
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
-//  return fScatterS;
      return color * li;
 //    if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
 //    return vec3(1.0);
