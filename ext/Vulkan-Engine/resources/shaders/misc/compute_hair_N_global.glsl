@@ -79,21 +79,24 @@ void main() {
     {
         // float phi_p = 0.5 * PI + float(x) * (0.5 * PI) / float(steps - 1); // From 90º to 180º
         float phi_p = (0.5*PI) + (float(x) / float(steps-1)) * (0.5*PI);
-        // float phi_D =  phi_p - phi;
-        float phi_D =  abs(phi - phi_p);
+        float phi_D =  phi_p - phi;
+        // float phi_D =  (phi_p - PHI);
 
         vec3 Dp = texture(DpTex, vec3(phi_D * ONE_OVER_PI, cos(thD),bsdf.azBeta)).rgb;
 
         // float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
         // vec3 nR = vec3(aR * Dp.x);
 
+        float sinThetaT = sin(thD) / bsdf.ior;
+        float cosThetaT = sqrt(1.0 - sinThetaT * sinThetaT);
+
         const float hTT = 0.0;
-        vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a);
+        vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a, cosThetaT);
         // ngTT += aTT * Dp.y * dPhiD * TWO_OVER_PI;
         ngTT += aTT * Dp.y;
 
         const float hTRT = sqrt(3.0) * 0.5;
-        vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a);
+        vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a, cosThetaT);
         // ngTRT += aTRT * Dp.z * dPhiD * TWO_OVER_PI;
         ngTRT += aTRT * Dp.z;
 

@@ -2,12 +2,19 @@
 // .....
 /////////////////////////////////////////////
 
+
+
 #ifndef PI
 #define PI              3.1415926535897932384626433832795
 #endif
 #define ONE_OVER_PI      (1.0 / PI)
 #define ONE_OVER_PI_HALF (2.0 / PI)
 #define DEG2RAD(x) ((x) / 180.0 * PI)
+
+
+// #define TRANS_MARSHNER
+#define TRANS_EPIC
+// #define TRANS_PHARR
 
 struct HairBSDF {
     vec3 tangent;
@@ -46,22 +53,53 @@ float fresnel(float ior, float cosTheta) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-//Transmittance
+//Transmittance (Marshnerr Paper)
 vec3 T(vec3 sigma_a, float gammaT) {
     return exp(-2.0 * sigma_a * (1.0 + cos(2.0 * gammaT)));
 }
+//Transmittance (Beer-Lambert Law)
+vec3 T(vec3 sigma_a, float cosGammaT, float cosThetaT) {
+    return exp( -sigma_a * (2.0 * cosGammaT / cosThetaT));
+}
+
 
 //Attenuation
-vec3 Ap(int p, float h, float ior, float thD, vec3 sigma_a) {
+vec3 Ap(int p, float h, float ior, float thD, vec3 sigma_a, float cosThetaT) {
     //Aproximation by Epic/Frostbyte/Unity
     float f = fresnel(ior, cos(thD) * sqrt(1.0 - (h * h)));
 
+#ifdef TRANS_MARSHNER
     //Actual Bravais Index
     float iorPerp = bravaisIndex(thD, ior);
     float gammaT = asin(h / iorPerp);
 
     //Transmittance
     vec3 t = T(sigma_a, gammaT);
+#endif
+#ifdef TRANS_PHARR
+    //Actual Bravais Index
+    float iorPerp = bravaisIndex(thD, ior);
+    float gammaT = asin(h / iorPerp);
+
+    //Transmittance
+    vec3 t = T(sigma_a, cos(gammaT), cosThetaT);
+#endif
+#ifdef TRANS_EPIC
+    float iorPerp = bravaisIndex(thD, ior);
+    float a = 1.0 / iorPerp;
+
+    //Transmittance
+    vec3 t = vec3(0.0);
+    if(p == 1){
+        float exponent = sqrt(1.0 - h * h * a * a)/ (2.0 * cos(thD));
+        t = pow(sigma_a, vec3(exponent));
+    }
+    if(p == 2){
+        float exponent = 0.8 / cos(thD);
+        t = pow(sigma_a, vec3(exponent));
+    }
+
+#endif
 
     return ((1 - f) * (1 - f)) * pow(f, p - 1) * pow(t, vec3(p));
 }
@@ -148,12 +186,15 @@ vec3 evalDirectHairBSDF(
     float aR = fresnel(bsdf.ior, cosThetaH);
     vec3 nR = vec3(aR * Dp.x);
 
+    float sinThetaT = sin(thI) / bsdf.ior;
+    float cosThetaT = sqrt(1.0 - sinThetaT * sinThetaT);
+
     const float hTT = 0.0;
-    vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a);
+    vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a, cosThetaT);
     vec3 nTT = aTT * Dp.y;
 
     const float hTRT = sqrt(3.0) * 0.5;
-    vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a);
+    vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a, cosThetaT);
     vec3 nTRT = aTRT * Dp.z;
 
     // Sum lobes
@@ -275,12 +316,15 @@ vec3 evalHairBSDF(
     float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     vec3 nR = vec3(aR * Dp.x);
 
+    float sinThetaT = sin_thI / bsdf.ior;
+    float cosThetaT = sqrt(1.0 - sinThetaT * sinThetaT);
+
     const float hTT = 0.0;
-    vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a);
+    vec3 aTT = Ap(1, hTT, bsdf.ior, thD, bsdf.sigma_a, cosThetaT);
     vec3 nTT = aTT * Dp.y;
 
     const float hTRT = sqrt(3.0) * 0.5;
-    vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a);
+    vec3 aTRT = Ap(2, hTRT, bsdf.ior, thD, bsdf.sigma_a, cosThetaT);
     vec3 nTRT = aTRT * Dp.z;
 
     // Sum lobes
@@ -339,9 +383,9 @@ vec3 evalHairBSDF(
         // vec3 Ab = computeAb(vec3(0.25), vec3(bsdf.density));
     if(bsdf.useScatter) {
 
-
         vec3 sigB = computeBackStrDev(a_b, a_f, b_b, b_f);
         vec3 sigma2B = sigB * sigB;
+
 
         float cosThetaD = cos(thD);
         float cos2ThetaD = cosThetaD * cosThetaD;
@@ -353,13 +397,13 @@ vec3 evalHairBSDF(
         /////////////////////////////////////////
 
         vec3 Gdb = g(mu, sigma2B);
-        fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD))  * 1000.0;
+        fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD)) ;
 
          // F Scatter Back
         /////////////////////////////////////////
 
         vec3 Gsb = g(mu, sigma2B + sigma2F);
-        fScatterB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD)) * 1000.0; 
+        fScatterB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD)) ; 
 
 
     }
@@ -373,9 +417,9 @@ vec3 evalHairBSDF(
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
+    // return fDirectB;
      return color * li;
 //    if(Ab.r > 1.0 || Ab.g > 1.0 || Ab.b > 1.0)
-//    return vec3(1.0);
 if(length(fDirectS) > length(vec3(1.2)) )
 return vec3(1.0,0.0,0.0);
     return  vec3(0.0,1.0,0.0);

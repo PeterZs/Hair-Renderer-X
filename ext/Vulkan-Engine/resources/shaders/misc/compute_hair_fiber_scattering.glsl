@@ -73,7 +73,7 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
                     phiR = float(z) / float(steps - 1) * (0.5 * PI); // From 0º to 90º
                 }
 
-                float phiD = abs(phiI - phiR);
+                float phiD = phiR - phiI;
 
                 bsdf.Rpower = powers.r;
                 bsdf.TTpower = powers.g;
@@ -91,9 +91,9 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
                 bsdf.TRTpower = betas.b;
                 vec3 B = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, true, true, true);
 
-                fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI * 4.0;
-                fAlpha += A * cosThetaR * dThetaR * dPhiR * dPhiI * 4.0;
-                fBeta += B * cosThetaR * dThetaR * dPhiR * dPhiI * 4.0;
+                fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
+                fAlpha += A * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
+                fBeta += B * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
             }
         }
     }

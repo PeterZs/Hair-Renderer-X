@@ -761,7 +761,7 @@ void ObjectExplorerWidget::render() {
                     float ph = mat->get_pheomelanine();
                     if (ImGui::DragFloat("Pheomelanine", &ph, 0.01f, 0.0f, 2.0f))
                     {
-                        mat->set_pheomelanine(eu);
+                        mat->set_pheomelanine(ph);
                     }
                 } else
                 {
