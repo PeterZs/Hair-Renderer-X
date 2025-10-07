@@ -204,7 +204,8 @@ vec3 evalDirectHairBSDF(
     vec3 TT = tt ? mTT * nTT : vec3(0.0);
     vec3 TRT = trt ? mTRT * nTRT : vec3(0.0);
 
-    direct = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
+    // direct = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
+    direct = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower);
 
     color += direct;
     return color;
@@ -311,6 +312,7 @@ vec3 evalHairBSDF(
     //(cos between 0 and 1)
     vec3 Dp = texture(DpTex, vec3(phi * ONE_OVER_PI, cos(thD),azBeta)).rgb;
 
+
     float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
     vec3 nR = vec3(aR * Dp.x);
 
@@ -369,7 +371,7 @@ vec3 evalHairBSDF(
         vec3 TTg = tt ? mgTT * ngTT : vec3(0.0);
         vec3 TRTg = trt ? mgTRT * ngTRT : vec3(0.0);
 
-        fScatterS = (Rg * bsdf.Rpower + TTg * bsdf.TTpower + TRTg * bsdf.TRTpower) / (cos(thD) * cos(thD));
+        fScatterS = (Rg * bsdf.Rpower + TTg * bsdf.TTpower + TRTg * bsdf.TRTpower);
 
     }
 
@@ -420,7 +422,7 @@ vec3 evalHairBSDF(
     fDirect = directFraction * (fDirectS + bsdf.density * gi);
     fScatter = vec3(0.0);
 
-    color = (fDirect + fScatter) * cos(thI);
+    color = (fDirect + fScatter);
 
 	//////////////////////////////////////////////////////////////////////////
     // return fDirectB;

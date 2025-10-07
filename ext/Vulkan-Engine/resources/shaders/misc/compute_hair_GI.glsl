@@ -34,10 +34,10 @@ void main() {
     float ix_theta = thD * ONE_OVER_PI_HALF;
     // float ix_theta = 0.5;
     int u = int(ix_theta * float(texSize.x - 1));
-    // vec3 attF = imageLoad(attFront, ivec2(u, 0)).rgb;
-    // vec3 attB = imageLoad(attBack, ivec2(u, 0)).rgb;
-    vec3 attF = vec3(1.0 - ix_theta,0.0,0.0)*0.6;
-    vec3 attB = vec3(1.0 - ix_theta,0.0,0.0)*0.3;
+    vec3 attF = imageLoad(attFront, ivec2(u, 0)).rgb;
+    vec3 attB = imageLoad(attBack, ivec2(u, 0)).rgb;
+    // vec3 attF = vec3(1.0 - ix_theta,0.0,0.0)*0.6;
+    // vec3 attB = vec3(1.0 - ix_theta,0.0,0.0)*0.3;
 
 
     vec3 bF = imageLoad(avgBetasFront, ivec2(u, 0)).rgb;
@@ -52,9 +52,9 @@ void main() {
     float cosThetaD = cos(thD);
     float cos2ThetaD = cosThetaD * cosThetaD;
 
-    vec3 Gdb = g(thH, vec3(spread*spread)+sigma2B);
+    vec3 Gdb = g(thH, vec3(spread*spread+sigma2B));
     // vec3 fBack = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD)) ;
-    vec3 fBack = (2.0 * vec3(1.0,0.0,0.0) * Gdb) ;
+    vec3 fBack = (2.0 * (1.0,1.0,1.0) * Gdb) ;
 
 
     imageStore(outputGI, ivec3(x, y, z), vec4(fBack, 1.0));
