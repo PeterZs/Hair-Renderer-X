@@ -57,6 +57,7 @@ class ResourceManager
     static Graphics::Image   HAIR_FRONT_SHIFTS;
     static Graphics::Image   HAIR_BACK_BETAS;
     static Graphics::Image   HAIR_FRONT_BETAS;
+    static Graphics::Image   HAIR_GI;
     /*
     Vignette for RTT
     */

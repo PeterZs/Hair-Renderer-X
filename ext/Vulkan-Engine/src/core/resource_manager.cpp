@@ -21,6 +21,7 @@ Graphics::Image   ResourceManager::HAIR_BACK_SHIFTS;
 Graphics::Image   ResourceManager::HAIR_FRONT_SHIFTS;
 Graphics::Image   ResourceManager::HAIR_BACK_BETAS;
 Graphics::Image   ResourceManager::HAIR_FRONT_BETAS;
+Graphics::Image   ResourceManager::HAIR_GI;
 Core::Mesh*       ResourceManager::VIGNETTE = nullptr;
 
 void ResourceManager::init_basic_resources(Graphics::Device* const device) {

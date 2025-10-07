@@ -15,6 +15,7 @@ void HairScatteringPass::create_hair_scattering_images() {
     ResourceManager::HAIR_BACK_BETAS.cleanup();
     ResourceManager::HAIR_FRONT_BETAS.cleanup();
     ResourceManager::HAIR_FRONT_ATT.cleanup();
+    ResourceManager::HAIR_GI.cleanup();
 
     ImageConfig config             = {};
     config.viewType                = TEXTURE_2D;
@@ -61,6 +62,18 @@ void HairScatteringPass::create_hair_scattering_images() {
     ResourceManager::HAIR_NG_TRT = m_device->create_image({m_imageExtent.width, m_imageExtent.width, 1}, config, false);
     ResourceManager::HAIR_NG_TRT.create_view(config);
     ResourceManager::HAIR_NG_TRT.create_sampler(samplerConfig);
+
+    // GI Texture
+    //--------------------------------------------------
+
+    ImageConfig configGI     = {};
+    configGI.viewType        = TEXTURE_3D;
+    configGI.format          = SRGBA_32F;
+    configGI.usageFlags      = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
+    configGI.mipLevels       = 1;
+    ResourceManager::HAIR_GI = m_device->create_image({m_imageExtent.width, m_imageExtent.width, 32}, configGI, false);
+    ResourceManager::HAIR_GI.create_view(configGI);
+    ResourceManager::HAIR_GI.create_sampler(samplerConfig);
 }
 void HairScatteringPass::setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies) {
     create_hair_scattering_images();
@@ -80,6 +93,7 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
     LayoutBinding frontShiftBinging(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 6);
     LayoutBinding backBetaBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 7);
     LayoutBinding frontBetaBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 8);
+    LayoutBinding GIbinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 9);
     m_descriptorPool.set_layout(GLOBAL_LAYOUT,
                                 {backImgBinding,
                                  frontImgBinding,
@@ -89,7 +103,8 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
                                  backShiftBinding,
                                  frontShiftBinging,
                                  backBetaBinding,
-                                 frontBetaBinding});
+                                 frontBetaBinding,
+                                 GIbinding});
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_COMPUTE, 0);
     LayoutBinding materialBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_COMPUTE, 1);
@@ -109,6 +124,7 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_SHIFTS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 6, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 7, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 8, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_GI, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 9, UNIFORM_STORAGE_IMAGE);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -133,13 +149,21 @@ void HairScatteringPass::setup_shader_passes() {
 
     m_shaderPasses[0] = mergePass;
 
-    ComputeShaderPass* NPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_N_global.glsl");
+    ComputeShaderPass* NPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_NGI.glsl");
     NPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
     NPass->build_shader_stages();
     NPass->build(m_descriptorPool);
 
     m_shaderPasses[1] = NPass;
+
+    ComputeShaderPass* GIPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_GI.glsl");
+    GIPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+
+    GIPass->build_shader_stages();
+    GIPass->build(m_descriptorPool);
+
+    m_shaderPasses[2] = GIPass;
 }
 
 void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -169,6 +193,8 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
             ResourceManager::HAIR_FRONT_BETAS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
         cmd.pipeline_barrier(
             ResourceManager::HAIR_FRONT_SHIFTS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_GI, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
     }
 
     /*
@@ -232,6 +258,13 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                              ACCESS_SHADER_WRITE,
                              STAGE_FRAGMENT_SHADER,
                              STAGE_COMPUTE_SHADER);
+        cmd.pipeline_barrier(ResourceManager::HAIR_GI,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_FRAGMENT_SHADER,
+                             STAGE_COMPUTE_SHADER);
     }
 
     unsigned int mesh_idx = 0;
@@ -243,7 +276,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                 m->get_geometry()) // Check if is inside frustrum
             {
                 auto mat = m->get_material();
-                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE && mat->dirty())
+                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE)
                 {
 
                     // Offset calculation
@@ -278,6 +311,52 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                     // Dispatch the compute shader
                     cmd.dispatch_compute({gridSize, gridSize, 1});
 
+                    // --------------------------------------------------------------
+
+                    cmd.pipeline_barrier(ResourceManager::HAIR_BACK_ATT,
+                                         LAYOUT_GENERAL,
+                                         LAYOUT_GENERAL,
+                                         ACCESS_SHADER_WRITE,
+                                         ACCESS_SHADER_READ,
+                                         STAGE_COMPUTE_SHADER,
+                                         STAGE_COMPUTE_SHADER);
+                    cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_ATT,
+                                         LAYOUT_GENERAL,
+                                         LAYOUT_GENERAL,
+                                         ACCESS_SHADER_WRITE,
+                                         ACCESS_SHADER_READ,
+                                         STAGE_COMPUTE_SHADER,
+                                         STAGE_COMPUTE_SHADER);
+                    cmd.pipeline_barrier(ResourceManager::HAIR_BACK_BETAS,
+                                         LAYOUT_GENERAL,
+                                         LAYOUT_GENERAL,
+                                         ACCESS_SHADER_WRITE,
+                                         ACCESS_SHADER_READ,
+                                         STAGE_COMPUTE_SHADER,
+                                         STAGE_COMPUTE_SHADER);
+                    cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_BETAS,
+                                         LAYOUT_GENERAL,
+                                         LAYOUT_GENERAL,
+                                         ACCESS_SHADER_WRITE,
+                                         ACCESS_SHADER_READ,
+                                         STAGE_COMPUTE_SHADER,
+                                         STAGE_COMPUTE_SHADER);
+
+                    shaderPass = m_shaderPasses[2];
+                    // Bind pipeline
+                    cmd.bind_shaderpass(*shaderPass);
+                    // GLOBAL LAYOUT BINDING
+                    cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {}, BINDING_TYPE_COMPUTE);
+                   
+
+                    // Dispatch the compute shader
+                    const uint32_t WORK_GROUP_SIZE_2 = 8;
+                    uint32_t       gridSize2         = std::max(1u, m_imageExtent.width);
+                    gridSize2                        = (gridSize2 + WORK_GROUP_SIZE_2 - 1) / WORK_GROUP_SIZE_2;
+                    uint32_t gridSize3               = 32;
+                    gridSize3                        = (gridSize3 + WORK_GROUP_SIZE_2 - 1) / WORK_GROUP_SIZE_2;
+                    cmd.dispatch_compute({gridSize2, gridSize2, gridSize3});
+
                     mat->dirty(false);
 
                     break; // WIP for now compute just one hair volume AND EXIT LOOP
@@ -293,14 +372,14 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
     cmd.pipeline_barrier(ResourceManager::HAIR_BACK_ATT,
                          LAYOUT_GENERAL,
                          LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
                          ACCESS_SHADER_READ,
                          STAGE_COMPUTE_SHADER,
                          STAGE_FRAGMENT_SHADER);
     cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_ATT,
                          LAYOUT_GENERAL,
                          LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
                          ACCESS_SHADER_READ,
                          STAGE_COMPUTE_SHADER,
                          STAGE_FRAGMENT_SHADER);
@@ -335,11 +414,18 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
     cmd.pipeline_barrier(ResourceManager::HAIR_FRONT_BETAS,
                          LAYOUT_GENERAL,
                          LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         ACCESS_SHADER_WRITE,
+                         ACCESS_SHADER_READ,
                          ACCESS_SHADER_READ,
                          STAGE_COMPUTE_SHADER,
                          STAGE_FRAGMENT_SHADER);
     cmd.pipeline_barrier(ResourceManager::HAIR_BACK_BETAS,
+                         LAYOUT_GENERAL,
+                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         ACCESS_SHADER_READ,
+                         ACCESS_SHADER_READ,
+                         STAGE_COMPUTE_SHADER,
+                         STAGE_FRAGMENT_SHADER);
+    cmd.pipeline_barrier(ResourceManager::HAIR_GI,
                          LAYOUT_GENERAL,
                          LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                          ACCESS_SHADER_WRITE,
@@ -358,6 +444,7 @@ void HairScatteringPass::cleanup() {
     ResourceManager::HAIR_FRONT_SHIFTS.cleanup();
     ResourceManager::HAIR_BACK_BETAS.cleanup();
     ResourceManager::HAIR_FRONT_BETAS.cleanup();
+    ResourceManager::HAIR_GI.cleanup();
 }
 
 } // namespace Core

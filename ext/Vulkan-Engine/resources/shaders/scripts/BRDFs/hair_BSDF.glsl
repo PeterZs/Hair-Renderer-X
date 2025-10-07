@@ -151,7 +151,7 @@ vec3 evalDirectHairBSDF(
 
     //Theta Half
     float thD = (thR - thI) * 0.5; //Theta Difference (0-90º)
-    float thH = (thR + thI) * 0.5; //Theta Half
+    float thH = (thR + thI); //Theta Half
 
     //Betas & Shifts
     vec3 betas = vec3(bsdf.beta, bsdf.beta * 0.5, bsdf.beta * 2.0);
@@ -224,10 +224,7 @@ vec3 evalHairBSDF(
     sampler2D frontAttTex,
     sampler2D ngTex,
     sampler2D ngtTex,
-    sampler2D shiftsTexFront,
-    sampler2D shiftsTexBack,
-    sampler2D betasTexFront,
-    sampler2D betasTexBack,
+    sampler3D GItex,
     float transHairsCount,
     bool r,
     bool tt,
@@ -245,7 +242,8 @@ vec3 evalHairBSDF(
     float sin_thR = dot(wr, u);
     float thR = asin(sin_thR);
 
-    float thD = (thR - thI) * 0.5; //Theta Difference (0-90º)
+    // float thD = (thR - thI) * 0.5; //Theta Difference (0-90º)
+    float thD = abs(thR - thI) * 0.5; //Theta Difference (0-90º)
     float thH = (thR + thI) * 0.5; //Theta Half
 
     //Phi
@@ -263,7 +261,7 @@ vec3 evalHairBSDF(
 
     // float hairsInFront = directFraction;
     // float hairsInFront = 1.0 - (transHairsCount / 100.0);
-    vec3 sigma2F = spread;
+    vec3 sigma2F = sqrt(spread);
     vec3 transF = transDirect;
 
 
@@ -288,8 +286,8 @@ vec3 evalHairBSDF(
     vec3 a_f = texture(frontAttTex, vec2(idx_thD, 0.5)).rgb;
     vec3 a_b = texture(backAttTex, vec2(idx_thD, 0.5)).rgb;
 
-    vec3 b_f = texture(betasTexFront, vec2(idx_thD, 0.5)).rgb;
-    vec3 b_b = texture(betasTexBack, vec2(idx_thD, 0.5)).rgb;
+    // vec3 b_f = texture(betasTexFront, vec2(idx_thD, 0.5)).rgb;
+    // vec3 b_b = texture(betasTexBack, vec2(idx_thD, 0.5)).rgb;
 
     //////////////////////////////////////////////////////////////////////////
 	// Compute S terms (direct + scatter)
@@ -381,29 +379,36 @@ vec3 evalHairBSDF(
 
     vec3 Ab = computeAb(a_b, a_f);
         // vec3 Ab = computeAb(vec3(0.25), vec3(bsdf.density));
+        vec3 gi  = vec3(0.0);
     if(bsdf.useScatter) {
 
-        vec3 sigB = computeBackStrDev(a_b, a_f, b_b, b_f);
-        vec3 sigma2B = sigB * sigB;
+        // vec3 sigB = computeBackStrDev(a_b, a_f, b_b, b_f);
+        // vec3 sigma2B = sigB * sigB;
+
+        float ix_theta_h = thH * ONE_OVER_PI * 0.5f + 0.5f;
+		float ix_theta   = thD   * ONE_OVER_PI_HALF;
+		vec3  ix_spread  = sqrt(spread) * ONE_OVER_PI*0.5f;
+
+        gi.r = texture(GItex, vec3(ix_spread.r, ix_theta_h,ix_theta)).r;
+        gi.g = texture(GItex, vec3(ix_spread.g, ix_theta_h,ix_theta)).g;
+        gi.b = texture(GItex, vec3(ix_spread.b, ix_theta_h,ix_theta)).b;
+        // float cosThetaD = cos(thD);
+        // float cos2ThetaD = cosThetaD * cosThetaD;
+
+        // float mu = thR + thI;
 
 
-        float cosThetaD = cos(thD);
-        float cos2ThetaD = cosThetaD * cosThetaD;
+        // // F Direct Back
+        // /////////////////////////////////////////
 
-        float mu = thR + thI;
+        // vec3 Gdb = g(mu, sigma2B);
+        // fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD)) ;
 
+        //  // F Scatter Back
+        // /////////////////////////////////////////
 
-        // F Direct Back
-        /////////////////////////////////////////
-
-        vec3 Gdb = g(mu, sigma2B);
-        fDirectB = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD)) ;
-
-         // F Scatter Back
-        /////////////////////////////////////////
-
-        vec3 Gsb = g(mu, sigma2B + sigma2F);
-        fScatterB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD)) ; 
+        // vec3 Gsb = g(mu, sigma2B + sigma2F);
+        // fScatterB = (2.0 * Ab * Gsb) / ((PI * cos2ThetaD)) ; 
 
 
     }
@@ -412,8 +417,9 @@ vec3 evalHairBSDF(
 	// Build lobes
 	////////////////////////////////////////////////////////////////////////
 
-    fDirect = directFraction * (fDirectS + bsdf.density * fDirectB);
-    // fScatter = (transF - vec3(directFraction)) * bsdf.density * (fScatterS + PI *bsdf.density * fScatterB);
+    fDirect = directFraction * (fDirectS + bsdf.density * gi);
+    fScatter = vec3(0.0);
+
     color = (fDirect + fScatter) * cos(thI);
 
 	//////////////////////////////////////////////////////////////////////////
