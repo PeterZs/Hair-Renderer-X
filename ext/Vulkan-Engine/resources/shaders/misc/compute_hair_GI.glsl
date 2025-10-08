@@ -52,9 +52,9 @@ void main() {
     float cosThetaD = cos(thD);
     float cos2ThetaD = cosThetaD * cosThetaD;
 
-    vec3 Gdb = g(thH, vec3(spread*spread+sigma2B));
+    vec3 Gdb = g(thH, vec3(spread + sigma2B));
     // vec3 fBack = (2.0 * Ab * Gdb) / ((PI * cos2ThetaD)) ;
-    vec3 fBack = (2.0 * (1.0,1.0,1.0) * Gdb) ;
+    vec3 fBack = (2.0 * Ab * Gdb) ;
 
 
     imageStore(outputGI, ivec3(x, y, z), vec4(fBack, 1.0));

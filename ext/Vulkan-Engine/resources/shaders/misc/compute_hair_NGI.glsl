@@ -63,7 +63,8 @@ void main() {
 
     uint steps = uint(integrationSteps);
 
-    float phi = float(i) / float(resolution - 1) * PI;
+    // float phi = float(i) / float(resolution - 1) * PI;
+    float phi =  (-0.5*PI) + (float(i) / float(resolution-1)) * (0.5*PI);
     float thD = float(j)  / float(resolution - 1) * (0.5 * PI);
 
     // Integration ............................................................
@@ -77,15 +78,14 @@ void main() {
 
     for (uint x = 0; x < steps; ++x)
     {
-        // float phi_p = 0.5 * PI + float(x) * (0.5 * PI) / float(steps - 1); // From 90º to 180º
-        float phi_p = (0.5*PI) + (float(x) / float(steps-1)) * (0.5*PI);
+        float phi_p = (-0.5*PI) + (float(x) / float(steps-1)) * (0.5*PI);
         float phi_D =  phi_p - phi;
         // float phi_D =  (phi_p - PHI);
 
         vec3 Dp = texture(DpTex, vec3(phi_D * ONE_OVER_PI, cos(thD),bsdf.azBeta)).rgb;
 
-        // float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * dot(wi, wr)));
-        // vec3 nR = vec3(aR * Dp.x);
+        float aR = fresnel(bsdf.ior, sqrt(0.5 + 0.5 * cos(thD)));
+         ngR += aR * Dp.x;
 
         float sinThetaT = sin(thD) / bsdf.ior;
         float cosThetaT = sqrt(1.0 - sinThetaT * sinThetaT);
@@ -107,7 +107,7 @@ void main() {
     ngTRT *= (PI * 0.5) / float(steps);
     ngTRT = ngTRT * (2.0 / PI);
 
-    imageStore(outputNG, ivec2(i, j), vec4(ngTT, 1.0));
+    imageStore(outputNG, ivec2(i, j), vec4(ngTT, ngR));
     imageStore(outputNGTRT, ivec2(i, j), vec4(ngTRT, 1.0));
 
 }

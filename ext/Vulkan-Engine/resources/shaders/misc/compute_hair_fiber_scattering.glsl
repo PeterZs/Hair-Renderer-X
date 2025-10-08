@@ -90,13 +90,13 @@ vec3 integrateOverHemisphere2(float theta_d, uint steps, uint hemisphere, out ve
                 float phi_i = PHI_MIN + (float(iPhiI) + 0.5) * dPhiI;
 
                 // Evaluación de la BSDF
-                float phiD = phi_r - phi_i;
+                float phiD = abs(phi_r - phi_i);
 
                 bsdf.Rpower = powers.r;
                 bsdf.TTpower = powers.g;
                 bsdf.TRTpower = powers.b;
-                // vec3 fval = evalDirectHairBSDF(theta_i, theta_r, phiD, bsdf, DpTex, true, true, true);
-                vec3 fval = vec3(1.0);
+                vec3 fval = evalDirectHairBSDF(theta_i, theta_r, phiD, bsdf, DpTex, true, true, true);
+                // vec3 fval = vec3(1.0);
 
                 
                 bsdf.Rpower = shifts.r;
@@ -124,22 +124,28 @@ vec3 integrateOverHemisphere2(float theta_d, uint steps, uint hemisphere, out ve
         (1.0 / 3.14159265359);
 
     //Compute average beta and shift values
-    fAlpha *= (dThetaR * dPhiR * dPhiI) *
+    fAlpha = fAlpha * (dThetaR * dPhiR * dPhiI) *
         (1.0 / 3.14159265359);
     avgShift = fAlpha / integral;
 
-    fBeta *= (dThetaR * dPhiR * dPhiI) *
+    fBeta = fBeta * (dThetaR * dPhiR * dPhiI) *
         (1.0 / 3.14159265359);
     avgBeta = fBeta / integral;
 
-    return integral ;
+    return integral;
 
 }
 vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3 avgShift, out vec3 avgBeta) {
 
-    const float dPhiI   = (0.5 * PI) / float(steps - 1);
-    const float dThetaR = (0.5 * PI) / float(steps - 1);
-    const float dPhiR   = (0.5 * PI) / float(steps - 1);
+    const float PHI_MIN      = -1.57079632679; // -π/2
+    const float PHI_MAX      =  1.57079632679; //  π/2
+
+    const float THETA_MIN  = 0.0;
+    const float THETA_MAX  = 1.57079632679;   
+
+    float dThetaR = (THETA_MAX - THETA_MIN) / steps;
+    float dPhiR   = (PHI_MAX - PHI_MIN)       / steps;
+    float dPhiI   = (PHI_MAX - PHI_MIN)       / steps;
 
     vec3 fSum = vec3(0.0);
     vec3 fAlpha = vec3(0.0);
@@ -151,22 +157,31 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
 
     for (uint x = 0; x < steps; ++x)
     {
-        float phiI = float(x) / float(steps - 1) * (0.5 * PI);
+        // float phiI = float(x) / float(steps - 1) * (0.5 * PI);
+        float phiI = PHI_MIN + (float(x) + 0.5) * dPhiI;
 
         for (uint y = 0; y < steps; ++y)
         {
-            float thetaR    = float(y)  / float(steps - 1) * (0.5 * PI); // From 0 to 90º
+            // float thetaR    = float(y)  / float(steps - 1) * (0.5 * PI); // From 0 to 90º
+            float thetaR = THETA_MIN + (float(y) + 0.5) * dThetaR;
             float cosThetaR = cos(thetaR);
 
             for (uint z = 0; z < steps; ++z)
             {
                 float phiR;
-                if (hemisphere == 0)
-                {
-                    phiR = (0.5 * PI) + float(z) / float(steps - 1) * (0.5 * PI); // From 90º to 180º
-                } else
-                {
-                    phiR = float(z) / float(steps - 1) * (0.5 * PI); // From 0º to 90º
+                float u = float(z) / float(steps - 1); // 0..1
+                if (hemisphere == 0) {
+                    // Front: 90° -> 180° -> -90°
+                    float phi_raw = 0.5 * PI + u * PI; // π/2 + u * π  => ranges [π/2, 3π/2]
+                    // wrap into (-π, π]
+                    if (phi_raw > PI) {
+                        phiR = phi_raw - 2.0 * PI; // maps (π, 3π/2] -> (-π, -π/2]
+                    } else {
+                        phiR = phi_raw;            // keeps [π/2, π]
+                    }
+                } else {
+                    // Back: -90° -> 90°
+                    phiR = -0.5 * PI + u * PI; // -π/2 + u * π => ranges [-π/2, π/2]
                 }
 
                 float phiD = phiR - phiI;
@@ -175,6 +190,7 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
                 bsdf.TTpower = powers.g;
                 bsdf.TRTpower = powers.b;
                 vec3 S = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, true, true, true);
+                // S = vec3(1.0);
 
                 
                 bsdf.Rpower = shifts.r;
@@ -187,9 +203,9 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
                 bsdf.TRTpower = betas.b;
                 vec3 B = evalDirectHairBSDF(thetaI, thetaR, phiD, bsdf, DpTex, true, true, true);
 
-                fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
-                fAlpha += A * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
-                fBeta += B * cosThetaR * dThetaR * dPhiR * dPhiI * 8.0;
+                fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI;
+                fAlpha += A * cosThetaR * dThetaR * dPhiR * dPhiI;
+                fBeta += B * cosThetaR * dThetaR * dPhiR * dPhiI;
             }
         }
     }
@@ -236,7 +252,7 @@ void main() {
 
     vec3 avgShiftF = vec3(0.0);
     vec3 avgBetaF = vec3(0.0);
-    vec3 fSumF = integrateOverHemisphere2(theta_d, steps, 0, avgShiftF, avgBetaF );
+    vec3 fSumF = integrateOverHemisphere(thetaI, steps, 0, avgShiftF, avgBetaF );
     imageStore(outputFrontAtt, ivec2(i, 0), vec4(fSumF, 1.0));
     imageStore(outputFrontShifts, ivec2(i, 0), vec4(avgShiftF, 1.0));
     imageStore(outputFrontBetas, ivec2(i, 0), vec4(avgBetaF, 1.0));
@@ -245,7 +261,7 @@ void main() {
 
     vec3 avgShiftB = vec3(0.0);
     vec3 avgBetaB = vec3(0.0);
-    vec3 fSumB = integrateOverHemisphere2(theta_d, steps, 1, avgShiftB, avgBetaB);
+    vec3 fSumB = integrateOverHemisphere(thetaI, steps, 1, avgShiftB, avgBetaB);
     imageStore(outputBackAtt, ivec2(i, 0), vec4(fSumB, 1.0));
     imageStore(outputBackShifts, ivec2(i, 0), vec4(avgShiftB, 1.0));
     imageStore(outputBackBetas, ivec2(i, 0), vec4(avgBetaB, 1.0));

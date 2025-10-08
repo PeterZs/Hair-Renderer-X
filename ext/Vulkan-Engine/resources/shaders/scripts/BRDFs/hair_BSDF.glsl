@@ -13,8 +13,8 @@
 
 
 // #define TRANS_MARSHNER
-#define TRANS_EPIC
-// #define TRANS_PHARR
+// #define TRANS_EPIC
+#define TRANS_PHARR
 
 struct HairBSDF {
     vec3 tangent;
