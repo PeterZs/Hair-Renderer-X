@@ -10,6 +10,7 @@ Core::IrrandianceComputePass* ResourceManager::irradianceComputePass = nullptr;
 Core::Texture*    ResourceManager::FALLBACK_TEXTURE    = nullptr;
 Core::Texture*    ResourceManager::FALLBACK_CUBEMAP    = nullptr;
 Core::Texture*    ResourceManager::BLUE_NOISE_TEXTURE  = nullptr;
+Core::Texture*    ResourceManager::HAIR_GI_FALLBACK    = nullptr;
 Core::TextureHDR* ResourceManager::HAIR_FAR_FIELD_DIST = nullptr;
 Graphics::Image   ResourceManager::HAIR_BACK_ATT;
 Graphics::Image   ResourceManager::HAIR_FRONT_ATT;
@@ -69,6 +70,20 @@ void ResourceManager::init_basic_resources(Graphics::Device* const device) {
         // Tools::Loaders::load_HDRi(HAIR_FAR_FIELD_DIST, ENGINE_RESOURCES_PATH "textures/DpNorm.hdr");
     }
     upload_texture_data(device, HAIR_FAR_FIELD_DIST);
+
+    //
+    if (!HAIR_GI_FALLBACK) // If not user set
+    {
+        TextureSettings settings{};
+        settings.useMipmaps = false;
+        settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
+        HAIR_GI_FALLBACK = new Texture(settings);
+
+        Tools::Loaders::load_3D_texture(HAIR_GI_FALLBACK, ENGINE_RESOURCES_PATH "textures/LUTs/blonde/GI.png");
+        HAIR_GI_FALLBACK->set_format(RGBA_8U);
+        HAIR_GI_FALLBACK->set_type(TEXTURE_3D);
+    }
+    upload_texture_data(device, HAIR_GI_FALLBACK);
 }
 
 void ResourceManager::clean_basic_resources() {
@@ -77,6 +92,7 @@ void ResourceManager::clean_basic_resources() {
     destroy_texture_data(BLUE_NOISE_TEXTURE);
     destroy_texture_data(FALLBACK_CUBEMAP);
     destroy_texture_data(HAIR_FAR_FIELD_DIST);
+    destroy_texture_data(HAIR_GI_FALLBACK);
 
     if (irradianceComputePass)
     {

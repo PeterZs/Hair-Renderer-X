@@ -336,50 +336,13 @@ vec3 evalHairBSDF(
 
     fDirectS = (R * bsdf.Rpower + TT * bsdf.TTpower + TRT * bsdf.TRTpower) / (cos(thD) * cos(thD));
 
-    // F Scatter S
-    /////////////////////////////////////////
-    if(bsdf.useScatter) {
-
-        //Longitudinal
-        //-----------------------------------------------
-
-        float mgRr = g(thH - shifts.x, betas.x + sigma2F.r);
-        float mgRg = g(thH - shifts.x, betas.x + sigma2F.g);
-        float mgRb = g(thH - shifts.x, betas.x + sigma2F.b);
-        float mgTTr = g(thH - shifts.y, betas.y + sigma2F.r);
-        float mgTTg = g(thH - shifts.y, betas.y + sigma2F.g);
-        float mgTTb = g(thH - shifts.y, betas.y + sigma2F.b);
-        float mgTRTr = g(thH - shifts.z, betas.z + sigma2F.r);
-        float mgTRTg = g(thH - shifts.z, betas.z + sigma2F.g);
-        float mgTRTb = g(thH - shifts.z, betas.z + sigma2F.b);
-
-        vec3 mgR = vec3(mgRr,mgRg,mgRb);
-        vec3 mgTT =vec3(mgTTr,mgTTg,mgTTb);
-        vec3 mgTRT =vec3(mgTRTr,mgTRTg,mgTRTb);
-
-        //Azimuthal
-        //-----------------------------------------------
-
-        vec4 ngSample0 = texture(ngTex,vec2(phi * ONE_OVER_PI, abs(thD * ONE_OVER_PI_HALF)));
-        vec3 ngSample1 = texture(ngtTex,vec2(phi * ONE_OVER_PI,abs(thD * ONE_OVER_PI_HALF))).rgb;
-
-        vec3 ngR = ngSample0.aaa;
-        vec3 ngTT = ngSample0.rgb;
-        vec3 ngTRT = ngSample1;
-
-        vec3 Rg = r ? mgR * ngR : vec3(0.0);
-        vec3 TTg = tt ? mgTT * ngTT : vec3(0.0);
-        vec3 TRTg = trt ? mgTRT * ngTRT : vec3(0.0);
-
-        fScatterS = (Rg * bsdf.Rpower + TTg * bsdf.TTpower + TRTg * bsdf.TRTpower);
-
-    }
+   
 
     //////////////////////////////////////////////////////////////////////////
 	// Compute Back terms (direct + scatter)
 	/////////////////////////////////////////////////////////////////////////
 
-    vec3 Ab = computeAb(a_b, a_f);
+    // vec3 Ab = computeAb(a_b, a_f);
         // vec3 Ab = computeAb(vec3(0.25), vec3(bsdf.density));
         vec3 gi  = vec3(0.0);
     if(bsdf.useScatter) {
@@ -414,6 +377,44 @@ vec3 evalHairBSDF(
 
 
     }
+     // F Scatter S
+    /////////////////////////////////////////
+    if(bsdf.useScatter) {
+
+        //Longitudinal
+        //-----------------------------------------------
+
+        float mgRr = g(thH - shifts.x, betas.x + sigma2F.r);
+        float mgRg = g(thH - shifts.x, betas.x + sigma2F.g);
+        float mgRb = g(thH - shifts.x, betas.x + sigma2F.b);
+        float mgTTr = g(thH - shifts.y, betas.y + sigma2F.r);
+        float mgTTg = g(thH - shifts.y, betas.y + sigma2F.g);
+        float mgTTb = g(thH - shifts.y, betas.y + sigma2F.b);
+        float mgTRTr = g(thH - shifts.z, betas.z + sigma2F.r);
+        float mgTRTg = g(thH - shifts.z, betas.z + sigma2F.g);
+        float mgTRTb = g(thH - shifts.z, betas.z + sigma2F.b);
+
+        vec3 mgR = vec3(mgRr,mgRg,mgRb);
+        vec3 mgTT =vec3(mgTTr,mgTTg,mgTTb);
+        vec3 mgTRT =vec3(mgTRTr,mgTRTg,mgTRTb);
+
+        //Azimuthal
+        //-----------------------------------------------
+
+        vec4 ngSample0 = texture(ngTex,vec2(phi * ONE_OVER_PI, abs(thD * ONE_OVER_PI_HALF)));
+        vec3 ngSample1 = texture(ngtTex,vec2(phi * ONE_OVER_PI,abs(thD * ONE_OVER_PI_HALF))).rgb;
+
+        vec3 ngR = ngSample0.aaa;
+        vec3 ngTT = ngSample0.rgb;
+        vec3 ngTRT = ngSample1;
+
+        vec3 Rg = r ? mgR * ngR : vec3(0.0);
+        vec3 TTg = tt ? mgTT * ngTT : vec3(0.0);
+        vec3 TRTg = trt ? mgTRT * ngTRT : vec3(0.0);
+
+        fScatterS = bsdf.density * (transDirect - directFraction) * gi + (Rg * bsdf.Rpower + TTg * bsdf.TTpower + TRTg * bsdf.TRTpower);
+
+    }
 
     //////////////////////////////////////////////////////////////////////////
 	// Build lobes
@@ -421,6 +422,7 @@ vec3 evalHairBSDF(
 
     fDirect = directFraction * (fDirectS + bsdf.density * gi);
     fScatter = vec3(0.0);
+    // fScatter = fScatterS;
 
     color = (fDirect + fScatter);
 

@@ -34,11 +34,11 @@ class HairMaterial : public IMaterial
     float m_density     = 0.7f;
     // Utils
     bool  m_R        = true; // Reflection
-    float m_Rpower   = 1.0f;
+    float m_Rpower   = 4.0f;
     bool  m_TT       = true; // Transmitance
-    float m_TTpower  = 1.0f;
+    float m_TTpower  = 2.0f;
     bool  m_TRT      = true; // Second reflection
-    float m_TRTpower = 1.0f;
+    float m_TRTpower = 4.0f;
     // Query
     bool m_useScatter      = false;
     bool m_usePigmentation = true;

@@ -44,7 +44,7 @@ void main() {
     vec3 bB = imageLoad(avgBetasBack, ivec2(u, 0)).rgb;
 
 
-    vec3 Ab = computeAb(attB, attF);
+    vec3 Ab = computeAb(attB*10.0, attF*10.0);
     vec3 sigB = computeBackStrDev(attB, attF, bB, bF);
     vec3 sigma2B = sigB * sigB;
 

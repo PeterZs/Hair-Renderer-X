@@ -46,6 +46,7 @@ class ResourceManager
     static Core::Texture*    FALLBACK_TEXTURE;
     static Core::Texture*    FALLBACK_CUBEMAP;
     static Core::Texture*    BLUE_NOISE_TEXTURE;
+    static Core::Texture*    HAIR_GI_FALLBACK;
     static Core::TextureHDR* HAIR_FAR_FIELD_DIST;
     static Graphics::Image   HAIR_BACK_ATT;
     static Graphics::Image   HAIR_FRONT_ATT;

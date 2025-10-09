@@ -1,7 +1,7 @@
 #include "application.h"
 #include <filesystem>
 
-// #define USE_NEURAL_MODELS
+#define USE_NEURAL_MODELS
 
 void HairViewer::init(Systems::RendererSettings settings) {
     m_window = new WindowGLFW("Hair Viewer", 1024, 1024);
@@ -9,16 +9,10 @@ void HairViewer::init(Systems::RendererSettings settings) {
     m_window->init();
     m_window->set_window_icon(RESOURCES_PATH "textures/icon.png");
 
-    m_window->set_window_size_callback(
-        std::bind(&HairViewer::window_resize_callback, this, std::placeholders::_1, std::placeholders::_2));
-    m_window->set_mouse_callback(
-        std::bind(&HairViewer::mouse_callback, this, std::placeholders::_1, std::placeholders::_2));
-    m_window->set_key_callback(std::bind(&HairViewer::keyboard_callback,
-                                         this,
-                                         std::placeholders::_1,
-                                         std::placeholders::_2,
-                                         std::placeholders::_3,
-                                         std::placeholders::_4));
+    m_window->set_window_size_callback(std::bind(&HairViewer::window_resize_callback, this, std::placeholders::_1, std::placeholders::_2));
+    m_window->set_mouse_callback(std::bind(&HairViewer::mouse_callback, this, std::placeholders::_1, std::placeholders::_2));
+    m_window->set_key_callback(
+        std::bind(&HairViewer::keyboard_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 
     m_renderer = new Systems::ForwardRenderer(m_window, ShadowResolution::HIGH, settings);
 
@@ -74,25 +68,16 @@ void HairViewer::setup() {
     m_scene->add(light);
 
 #ifdef USE_NEURAL_MODELS
-    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_PABLO.ply",
-    //                    RESOURCES_PATH "models/neural_head_PABLO.ply",
-    //                    "Pablo",
-    //                    {1, 1, 1},
-    //                    Vec3(0.0),
-    //                    -175.0f);
-    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
-    //                    RESOURCES_PATH "models/neural_head_ALVARO.ply",
-    //                    "Alvaro",
-    //                    {9, 6, 4},
-    //                    {-5.5f, 0.1f, -0.4f},
-    //                    -35.0f);
+    load_neural_avatar(RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
+    load_neural_avatar(
+        RESOURCES_PATH "models/neural_hair_ALVARO.ply", RESOURCES_PATH "models/neural_head_ALVARO.ply", "Alvaro", {0.8, 0.2, 4.0}, {-5.5f, 0.1f, -0.4f}, -35.0f);
     load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONO.ply",
                        RESOURCES_PATH "models/neural_head_TONO.ply",
                        "Antonio",
-                       {24, 4, 24},
+                       {0.4, 0.2, 24.0},
                        //    {5.5f, 0.0f, 0.0f},
                        {0.0f, 0.0f, 0.0f},
-                       -320.0f);
+                       -320.0f, false);
     //    {9, 6, 3}
 #else
     Mesh* hair = new Mesh();
@@ -104,6 +89,16 @@ void HairViewer::setup() {
     hair->push_material(hmat);
     hair->set_name("Hair");
 
+    Mesh* hair2 = new Mesh();
+    Tools::Loaders::load_3D_file(hair2, MESH_PATH + "curly.hair", false);
+    hair2->set_scale(0.053f);
+    hair2->set_rotation({90.0, 180.0f, 0.0f});
+    HairMaterial* hmat2 = new HairMaterial(0.8);
+    hmat2->set_thickness(0.0025f);
+    hair2->push_material(hmat2);
+    hair2->set_name("Hair Curly");
+    hair2->set_active(false);
+
     Mesh* head = new Mesh();
     Tools::Loaders::load_3D_file(head, MESH_PATH + "woman2.ply");
     head->set_rotation({0.0, 225.0f, 180.0f});
@@ -111,7 +106,7 @@ void HairViewer::setup() {
     Texture* headAlbedo = new Texture();
     Tools::Loaders::load_texture(headAlbedo, TEXTURE_PATH + "head.png");
     headMat->set_albedo_texture(headAlbedo);
-    headMat->set_albedo(Vec3(204.0f, 123.0f, 85.0f)  / 255.0f);
+    headMat->set_albedo(Vec3(204.0f, 123.0f, 85.0f) / 255.0f);
     headMat->set_albedo_weight(0.75f);
     headMat->set_metalness(0.0f);
     headMat->set_roughness(0.5f);
@@ -119,7 +114,7 @@ void HairViewer::setup() {
     head->set_name("Head");
     Mesh* eyes = new Mesh();
     Tools::Loaders::load_3D_file(eyes, MESH_PATH + "eyes.ply");
-    auto     eyesMat    = new PhysicallyBasedMaterial();
+    auto eyesMat = new PhysicallyBasedMaterial();
     eyes->push_material(eyesMat);
     Texture* eyesAlbedo = new Texture();
     Tools::Loaders::load_texture(eyesAlbedo, TEXTURE_PATH + "eye.png");
@@ -129,8 +124,9 @@ void HairViewer::setup() {
     eyes->set_name("Eyes");
     head->add_child(eyes);
     // head->add_child(hair);
-    m_scene->add(hair);
     // m_scene->add(head);
+    m_scene->add(hair);
+    m_scene->add(hair2);
 #endif
 
     m_scene->set_ambient_color({0.05, 0.05, 0.05});
@@ -157,12 +153,11 @@ void HairViewer::update() {
     if (animateLight)
     {
         float rotationAngle = glm::radians(10.0f * m_time.delta);
-        float _x = light->get_position().x * cos(rotationAngle) - light->get_position().z * sin(rotationAngle);
-        float _z = light->get_position().x * sin(rotationAngle) + light->get_position().z * cos(rotationAngle);
+        float _x            = light->get_position().x * cos(rotationAngle) - light->get_position().z * sin(rotationAngle);
+        float _z            = light->get_position().x * sin(rotationAngle) + light->get_position().z * cos(rotationAngle);
 
         light->set_position({_x, light->get_position().y, _z});
-        static_cast<UnlitMaterial*>(static_cast<Mesh*>(light->get_children().front())->get_material(0))
-            ->set_color({light->get_color()*4.0f, 1.0f});
+        static_cast<UnlitMaterial*>(static_cast<Mesh*>(light->get_children().front())->get_material(0))->set_color({light->get_color() * 4.0f, 1.0f});
     }
 
     m_interface.objectWidget->set_object(m_interface.sceneWidget->get_selected_object());
@@ -182,15 +177,16 @@ void HairViewer::tick() {
 void HairViewer::load_neural_avatar(const char* hairFile,
                                     const char* headFile,
                                     const char* objName,
-                                    math::ivec3 hairColor,
+                                    math::vec3 hairColor,
                                     Vec3        position,
-                                    float       rotation) {
+                                    float       rotation,
+                                    bool        active) {
 
     Mesh*       hair = new Mesh();
     std::thread loadThread1(hair_loaders::load_neural_hair, hair, hairFile, nullptr, true, false, false, false);
     loadThread1.detach();
 
-    HairMaterial* hmat = new HairMaterial();
+    HairMaterial* hmat = new HairMaterial(hairColor.r, hairColor.g);
     hair->push_material(hmat);
     hair->set_name(std::string(objName) + " hair");
 
@@ -212,4 +208,5 @@ void HairViewer::load_neural_avatar(const char* hairFile,
 
     head->add_child(hair);
     m_scene->add(head);
+    head->set_active(active);
 }

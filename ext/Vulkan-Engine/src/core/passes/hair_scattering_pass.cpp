@@ -276,7 +276,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                 m->get_geometry()) // Check if is inside frustrum
             {
                 auto mat = m->get_material();
-                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE)
+                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE && mat->dirty())
                 {
 
                     // Offset calculation
