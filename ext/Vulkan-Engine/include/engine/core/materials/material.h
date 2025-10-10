@@ -40,11 +40,12 @@ class IMaterial
   public:
     enum Type : uint32_t
     {
-        UNLIT_TYPE     = 0,
-        PHONG_TYPE     = 1,
-        PBR_TYPE       = 2,
-        HAIR_STR_TYPE  = 3,
-        HAIR_CARD_TYPE = 4,
+        UNLIT_TYPE           = 0,
+        PHONG_TYPE           = 1,
+        PBR_TYPE             = 2,
+        HAIR_STR_TYPE        = 3,
+        HAIR_CARD_TYPE       = 4,
+        HAIR_STR_DISNEY_TYPE = 5,
     };
 
     static IMaterial* DEBUG_MATERIAL;

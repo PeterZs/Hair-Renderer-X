@@ -244,6 +244,18 @@ void ForwardPass::setup_shader_passes() {
     hairStrandPass2->graphicSettings.topology         = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
     m_shaderPasses[IMaterial::Type::HAIR_STR_TYPE]    = hairStrandPass2;
 
+    GraphicShaderPass* hairStrandPassDisney =
+        new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/forward/hair_strand_disney.glsl");
+    hairStrandPassDisney->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, true}};
+    hairStrandPassDisney->graphicSettings.attributes      = {
+        {POSITION_ATTRIBUTE, true}, {NORMAL_ATTRIBUTE, false}, {UV_ATTRIBUTE, false}, {TANGENT_ATTRIBUTE, true}, {COLOR_ATTRIBUTE, true}};
+    hairStrandPassDisney->graphicSettings.dynamicStates    = dynamicStates;
+    hairStrandPassDisney->graphicSettings.samples          = samples;
+    hairStrandPassDisney->graphicSettings.sampleShading    = false;
+    hairStrandPassDisney->graphicSettings.blendAttachments = blendAttachments;
+    hairStrandPassDisney->graphicSettings.topology         = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    m_shaderPasses[IMaterial::Type::HAIR_STR_DISNEY_TYPE]    = hairStrandPassDisney;
+
     GraphicShaderPass* skyboxPass =
         new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/forward/skybox.glsl");
     skyboxPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};

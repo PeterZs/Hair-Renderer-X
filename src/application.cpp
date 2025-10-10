@@ -1,7 +1,7 @@
 #include "application.h"
 #include <filesystem>
 
-#define USE_NEURAL_MODELS
+// #define USE_NEURAL_MODELS
 
 void HairViewer::init(Systems::RendererSettings settings) {
     m_window = new WindowGLFW("Hair Viewer", 1024, 1024);
@@ -68,23 +68,29 @@ void HairViewer::setup() {
     m_scene->add(light);
 
 #ifdef USE_NEURAL_MODELS
-    load_neural_avatar(RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
     load_neural_avatar(
-        RESOURCES_PATH "models/neural_hair_ALVARO.ply", RESOURCES_PATH "models/neural_head_ALVARO.ply", "Alvaro", {0.8, 0.2, 4.0}, {-5.5f, 0.1f, -0.4f}, -35.0f);
+        RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
+    load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
+                       RESOURCES_PATH "models/neural_head_ALVARO.ply",
+                       "Alvaro",
+                       {0.8, 0.2, 4.0},
+                       {-5.5f, 0.1f, -0.4f},
+                       -35.0f);
     load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONO.ply",
                        RESOURCES_PATH "models/neural_head_TONO.ply",
                        "Antonio",
                        {0.4, 0.2, 24.0},
                        //    {5.5f, 0.0f, 0.0f},
                        {0.0f, 0.0f, 0.0f},
-                       -320.0f, false);
+                       -320.0f,
+                       false);
     //    {9, 6, 3}
 #else
     Mesh* hair = new Mesh();
     Tools::Loaders::load_3D_file(hair, MESH_PATH + "straight.hair", false);
     hair->set_scale(0.053f);
     hair->set_rotation({90.0, 180.0f, 0.0f});
-    HairMaterial* hmat = new HairMaterial(0.4);
+    HairDisneyMaterial* hmat = new HairDisneyMaterial();
     hmat->set_thickness(0.0025f);
     hair->push_material(hmat);
     hair->set_name("Hair");
@@ -177,7 +183,7 @@ void HairViewer::tick() {
 void HairViewer::load_neural_avatar(const char* hairFile,
                                     const char* headFile,
                                     const char* objName,
-                                    math::vec3 hairColor,
+                                    math::vec3  hairColor,
                                     Vec3        position,
                                     float       rotation,
                                     bool        active) {
