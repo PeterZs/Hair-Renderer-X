@@ -36,7 +36,7 @@ layout(location = 1) in vec3 v_tangent[];
 
 //Uniforms
 layout(set = 1, binding = 1) uniform MaterialUniforms {
-    vec3 Cr;
+     vec3 Cr;
     float Ir;
 
     vec3 Ctt;
@@ -45,8 +45,11 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
     vec3 Ctrt;
     float Itrt;
 
-    vec3 Cg;
-    float Ig;
+    vec3 Cb;
+    float Ib;
+
+    vec3 Cf;
+    float If;
 
     float beta;
     float shift;
@@ -166,8 +169,11 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
     vec3 Ctrt;
     float Itrt;
 
-    vec3 Cg;
-    float Ig;
+    vec3 Cb;
+    float Ib;
+
+    vec3 Cf;
+    float If;
 
     float beta;
     float shift;
@@ -182,6 +188,7 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
     bool r;
     bool tt;
     bool trt;
+    float Ig;
 
 } material;
 
@@ -291,13 +298,17 @@ void main() {
     bsdf.Itt = material.Itt;
     bsdf.Itrt = material.Itrt;
     bsdf.Ig = material.Ig;
+    bsdf.Ib = material.Ib;
+    bsdf.If = material.If;
 
     bsdf.Cr = material.Cr;
     bsdf.Ctt = material.Ctt;
     bsdf.Ctrt = material.Ctrt;
-    bsdf.Cg = material.Cg;
+    bsdf.Cb = material.Cb;
+    bsdf.Cf = material.Cf;
 
-    bsdf.angleG = 1.0;
+
+    bsdf.angleG = 1.0 + g_color.r;
 
     bsdf.useScatter = material.beta == 1.0 ? true : false;
 
@@ -322,18 +333,35 @@ void main() {
             vec3 wi = normalize(scene.lights[i].position.xyz - g_pos);
             vec3 wr = normalize(-g_pos);
 
-            vec3 u = bsdf.tangent;
-            float sin_thI = dot(wi, u);
-            float thI = asin(sin_thI);
-            float sin_thR = dot(wr, u);
-            float thR = asin(sin_thR);
+            // vec3 u = bsdf.tangent;
+            // float sin_thI = dot(wi, u);
+            // float thI = asin(sin_thI);
+            // float sin_thR = dot(wr, u);
+            // float thR = asin(sin_thR);
 
-            vec3 azI = normalize(wi - sin_thI * u);
-            vec3 azR = normalize(wr - sin_thR * u);
-            float cosPhi = dot(azI, azR) * inversesqrt(dot(azI, azI) * dot(azR, azR) + 1e-4);
-            float phi = acos(cosPhi); //(0-180º)
+            // vec3 azI = normalize(wi - sin_thI * u);
+            // vec3 azR = normalize(wr - sin_thR * u);
+            // float cosPhi = dot(azI, azR) * inversesqrt(dot(azI, azI) * dot(azR, azR) + 1e-4);
+            // float phi = acos(cosPhi); //(0-180º)
 
-            vec3 lighting = evalDirectDisneyHairBSDF(thI, thR, phi, bsdf, material.r, material.tt, material.trt) * scene.lights[i].color * scene.lights[i].intensity;
+            // vec3 lighting = evalDirectDisneyHairBSDF(thI, thR, phi, bsdf, material.r, material.tt, material.trt) * scene.lights[i].color * scene.lights[i].intensity;
+           
+              vec3 lighting = evalDisneyHairBSDF(
+                normalize(scene.lights[i].position.xyz - g_pos), 
+                normalize(-g_pos),
+                scene.lights[i].color * scene.lights[i].intensity,
+                bsdf, 
+                shadow,
+                spread,
+                directFraction,
+                hairNgTex,
+                hairNgTex,
+                hairNgtTex,
+                hairGITex,
+                nStrands,
+                material.r, 
+                material.tt, 
+                material.trt);
 
             color += lighting;
         }

@@ -141,7 +141,7 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
 
 void HairScatteringPass::setup_shader_passes() {
 
-    ComputeShaderPass* mergePass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_fiber_scattering.glsl");
+    ComputeShaderPass* mergePass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_fiber_scattering_disney.glsl");
     mergePass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
     mergePass->build_shader_stages();
@@ -276,7 +276,8 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                 m->get_geometry()) // Check if is inside frustrum
             {
                 auto mat = m->get_material();
-                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE && mat->dirty())
+                // if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_DISNEY_TYPE && mat->dirty())
+                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_DISNEY_TYPE )
                 {
 
                     // Offset calculation

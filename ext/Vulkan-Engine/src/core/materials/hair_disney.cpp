@@ -16,8 +16,11 @@ Graphics::MaterialUniforms HairDisneyMaterial::get_uniforms() const {
     // vec3 Ctrt;
     // float Itrt;
 
-    // vec3 Cg;
-    // float Ig;
+    // vec3 Cb;
+    // float Ib;
+
+    // vec3 Cf;
+    // float If;
 
     // float beta;
     // float shift;
@@ -32,6 +35,7 @@ Graphics::MaterialUniforms HairDisneyMaterial::get_uniforms() const {
     //  bool r;
     //  bool tt;
     //  bool trt;
+    // float Ig;
 
     //-----------------
 
@@ -41,10 +45,11 @@ Graphics::MaterialUniforms HairDisneyMaterial::get_uniforms() const {
     uniforms.dataSlot1 = Vec4(m_Cr, m_Ir);
     uniforms.dataSlot2 = Vec4(m_Ctt, m_Itt);
     uniforms.dataSlot3 = Vec4(m_Ctrt, m_Itrt);
-    uniforms.dataSlot4 = Vec4(m_Cg, m_Ig);
-    uniforms.dataSlot5 = {m_roughness, deg2rad(m_shift), m_ior, m_density};
-    uniforms.dataSlot6 = {m_azRoughness, m_azRoughness, m_thickness, m_useScatter};
-    uniforms.dataSlot7 = {m_R, m_TT, m_TRT, 0.0};
+    uniforms.dataSlot4 = Vec4(m_Cb, m_Ib);
+    uniforms.dataSlot5 = Vec4(m_Cf, m_If);
+    uniforms.dataSlot6 = {m_roughness * m_roughness, deg2rad(m_shift), m_ior, m_density};
+    uniforms.dataSlot7 = {m_azRoughness * m_azRoughness, m_azRoughness * m_azRoughness, m_thickness, m_useScatter};
+    uniforms.dataSlot8 = {m_R, m_TT, m_TRT, m_Ig};
 
     return uniforms;
 }

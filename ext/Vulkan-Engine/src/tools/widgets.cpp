@@ -845,6 +845,107 @@ void ObjectExplorerWidget::render() {
                     mat->enable_scattering(scatter);
                 }
             }
+            if (model->get_material(i)->get_type() == IMaterial::Type::HAIR_STR_DISNEY_TYPE)
+            {
+                HairDisneyMaterial* mat = static_cast<HairDisneyMaterial*>(model->get_material(i));
+                // ImGui UI code
+
+                Vec3 Rcolor = mat->get_R_color();
+                if (ImGui::ColorEdit3("R Color", (float*)&Rcolor))
+                {
+                    mat->set_R_color(Rcolor);
+                };
+                Vec3 TTcolor = mat->get_TT_color();
+                if (ImGui::ColorEdit3("TT Color", (float*)&TTcolor))
+                {
+                    mat->set_TT_color(TTcolor);
+                };
+                Vec3 TRTcolor = mat->get_TRT_color();
+                if (ImGui::ColorEdit3("TRT Color", (float*)&TRTcolor))
+                {
+                    mat->set_TRT_color(TRTcolor);
+                };
+
+                float roughness = mat->get_roughness();
+                if (ImGui::DragFloat("Roughness", &roughness, 0.05f, 0.0f, 2.0f))
+                {
+                    mat->set_roughness(roughness); // Update roughness
+                }
+                float azroughness = mat->get_azimuthal_roughness();
+                if (ImGui::DragFloat("Az. Roughness (0-1)", &azroughness, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_azimuthal_roughness(azroughness); // Update roughness
+                }
+
+                float thickness = mat->get_thickness();
+                if (ImGui::DragFloat("Thickness", &thickness, 0.0001f, 0.0f, 1.0f))
+                {
+                    mat->set_thickness(thickness);
+                }
+
+                bool r = mat->get_R();
+                if (ImGui::Checkbox("Reflection (R)", &r))
+                {
+                    mat->set_R(r);
+                }
+                float rPower = mat->get_R_intensity();
+                if (ImGui::DragFloat("Reflection Power (R)", &rPower, 0.1f, 0.0f, 10.0f))
+                {
+                    mat->set_R_intensity(rPower); // Update reflection power
+                }
+
+                bool tt = mat->get_TT();
+                if (ImGui::Checkbox("Transmitance (TT)", &tt))
+                {
+                    mat->set_TT(tt); // Update transmittance
+                }
+
+                float ttPower = mat->get_TT_intensity();
+                if (ImGui::DragFloat("Transmitance Power (TT)", &ttPower, 0.1f, 0.0f, 10.0f))
+                {
+                    mat->set_TT_intensity(ttPower); // Update transmittance power
+                }
+
+                bool trt = mat->get_TRT();
+                if (ImGui::Checkbox("Second Reflection (TRT)", &trt))
+                {
+                    mat->set_TRT(trt); // Update second reflection
+                }
+
+                float trtPower = mat->get_TRT_intensity();
+                if (ImGui::DragFloat("Second Reflection Power (TRT)", &trtPower, 0.1f, 0.0f, 20.0f))
+                {
+                    mat->set_TRT_intensity(trtPower); // Update second reflection power
+                }
+
+                float gp = mat->get_glints_intensity();
+                if (ImGui::DragFloat("Glints Power", &gp, 0.1f, 0.0f, 20.0f))
+                {
+                    mat->set_glints_intensity(gp);
+                }
+
+                float shift = mat->get_shift();
+                if (ImGui::DragFloat("Shift (deg)", &shift, 0.1f, 1.0f, 20.0f))
+                {
+                    mat->set_shift(-shift); // Update shift
+                }
+
+                float ior = mat->get_ior();
+                if (ImGui::DragFloat("Index of Refraction (IOR)", &ior, 0.01f, 1.0f, 2.0f))
+                {
+                    mat->set_ior(ior); // Update index of refraction
+                }
+                float dens = mat->get_density();
+                if (ImGui::DragFloat("Density", &dens, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_density(dens);
+                }
+                bool scatter = mat->enable_scattering();
+                if (ImGui::Checkbox("Enable Scattering", &scatter))
+                {
+                    mat->enable_scattering(scatter);
+                }
+            }
 
             if (model->get_material(i)->get_type() == IMaterial::Type::UNLIT_TYPE)
             {

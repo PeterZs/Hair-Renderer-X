@@ -25,15 +25,18 @@ class HairDisneyMaterial : public IMaterial
     Vec3 m_Cr   = {1.0, 1.0, 1.0};
     Vec3 m_Ctt  = {0.6, 0.4, 0.1};
     Vec3 m_Ctrt = {0.6, 0.3, 0.2};
-    Vec3 m_Cg   = {1.0, 1.0, 1.0};
+    Vec3 m_Cb   = {0.6, 0.3, 0.2};
+    Vec3 m_Cf   = {0.6, 0.3, 0.2};
     // Intensities of different scatter events
     float m_Ir   = 1.0f;
     float m_Itt  = 1.0f;
     float m_Itrt = 1.0f;
     float m_Ig   = 2.0f;
+    float m_Ib   = 1.0f;
+    float m_If   = 1.0f;
     //
     float m_thickness   = 0.003f;
-    float m_roughness   = 0.3f;  // (-5º to -10º) => -0.088 to -0.17 rads
+    float m_roughness   = 0.4f;  //
     float m_azRoughness = 0.35f; // (0 to 1) => perceptually mapped
     float m_shift       = -5.2f; // (-5º to -10º) => -0.088 to -0.17 rads
     float m_ior         = 1.55f;
@@ -80,8 +83,11 @@ class HairDisneyMaterial : public IMaterial
     inline Vec3 get_TRT_color() const {
         return m_Ctrt;
     }
-    inline Vec3 get_G_color() const {
-        return m_Cg;
+    inline Vec3 get_backscatter_color() const {
+        return m_Cb;
+    }
+    inline Vec3 get_frontscatter_color() const {
+        return m_Cf;
     }
     inline void set_R_color(Vec3 color) {
         m_Cr      = color;
@@ -95,8 +101,33 @@ class HairDisneyMaterial : public IMaterial
         m_Ctrt    = color;
         m_isDirty = true;
     }
-    inline void set_glints_color(Vec3 color) {
-        m_Cg      = color;
+    inline void set_backscatter_color(Vec3 color) {
+        m_Cb      = color;
+        m_isDirty = true;
+    }
+    inline void set_frontscatter_color(Vec3 color) {
+        m_Cf      = color;
+        m_isDirty = true;
+    }
+    inline float get_glints_intensity() const {
+        return m_Ig;
+    }
+    inline void set_glints_intensity(float i) {
+        m_Ig      = i;
+        m_isDirty = true;
+    }
+    inline float get_frontscatter_intensity() const {
+        return m_If;
+    }
+    inline void set_frontscatter_intensity(float i) {
+        m_If      = i;
+        m_isDirty = true;
+    }
+    inline float get_backscatter_intensity() const {
+        return m_Ib;
+    }
+    inline void set_backscatter_intensity(float i) {
+        m_Ib      = i;
         m_isDirty = true;
     }
 
