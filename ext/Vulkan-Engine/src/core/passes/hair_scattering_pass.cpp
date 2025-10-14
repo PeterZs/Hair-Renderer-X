@@ -74,6 +74,10 @@ void HairScatteringPass::create_hair_scattering_images() {
     ResourceManager::HAIR_GI = m_device->create_image({m_imageExtent.width, m_imageExtent.width, 32}, configGI, false);
     ResourceManager::HAIR_GI.create_view(configGI);
     ResourceManager::HAIR_GI.create_sampler(samplerConfig);
+
+    // Normalizing Buffer
+    m_normBuffer = m_device->create_buffer_VMA(
+        sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST, VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
 }
 void HairScatteringPass::setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies) {
     create_hair_scattering_images();
@@ -125,6 +129,8 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 7, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 8, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_GI, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 9, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(
+            &m_normBuffer, sizeof(Vec4), m_device->pad_uniform_buffer_size(sizeof(Vec4)), &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 10);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -141,7 +147,8 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
 
 void HairScatteringPass::setup_shader_passes() {
 
-    ComputeShaderPass* mergePass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_fiber_scattering_disney.glsl");
+    ComputeShaderPass* mergePass =
+        new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_fiber_scattering_disney.glsl");
     mergePass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
     mergePass->build_shader_stages();
@@ -164,6 +171,14 @@ void HairScatteringPass::setup_shader_passes() {
     GIPass->build(m_descriptorPool);
 
     m_shaderPasses[2] = GIPass;
+
+    ComputeShaderPass* normPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_over_sphere.glsl");
+    normPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+
+    normPass->build_shader_stages();
+    normPass->build(m_descriptorPool);
+
+    m_shaderPasses[3] = normPass;
 }
 
 void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -277,7 +292,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
             {
                 auto mat = m->get_material();
                 // if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_DISNEY_TYPE && mat->dirty())
-                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_DISNEY_TYPE )
+                if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_DISNEY_TYPE)
                 {
 
                     // Offset calculation
@@ -348,7 +363,6 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                     cmd.bind_shaderpass(*shaderPass);
                     // GLOBAL LAYOUT BINDING
                     cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {}, BINDING_TYPE_COMPUTE);
-                   
 
                     // Dispatch the compute shader
                     const uint32_t WORK_GROUP_SIZE_2 = 8;

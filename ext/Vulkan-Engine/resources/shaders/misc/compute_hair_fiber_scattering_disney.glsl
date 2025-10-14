@@ -65,16 +65,18 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
     const float THETA_MAX  = 1.57079632679;   
 
     float dThetaR = (THETA_MAX - THETA_MIN) / steps;
-    float dPhiR   = (PHI_MAX - PHI_MIN)       / steps;
-    float dPhiI   = (PHI_MAX - PHI_MIN)       / steps;
+    float dPhiR   = (PHI_MAX - PHI_MIN)     / steps;
+    float dPhiI   = (PHI_MAX - PHI_MIN)     / steps;
 
-    vec3 fSum = vec3(0.0);
-    vec3 fAlpha = vec3(0.0);
-    vec3 fBeta = vec3(0.0);
+    vec3 fSum =     vec3(0.0);
+    vec3 fAlpha =   vec3(0.0);
+    vec3 fBeta =    vec3(0.0);
 
-    vec3 shifts = vec3(bsdf.shift, -bsdf.shift * 0.5, -3.0 * bsdf.shift * 0.5);
-    vec3 betas = vec3(bsdf.beta, bsdf.beta * 0.5, bsdf.beta * 2.0);
-    vec3 powers = vec3(bsdf.Ir, bsdf.Itt, bsdf.Itrt);
+    vec3 shifts =   vec3(bsdf.shift, -bsdf.shift * 0.5, -3.0 * bsdf.shift * 0.5);
+    vec3 betas =    vec3(bsdf.beta, bsdf.beta * 0.5, bsdf.beta * 2.0);
+    vec3 powers =   vec3(bsdf.Ir, bsdf.Itt, bsdf.Itrt);
+
+    float cosThetaI = cos(thetaI);
 
     for (uint x = 0; x < steps; ++x)
     {
@@ -85,7 +87,7 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
         {
             // float thetaR    = float(y)  / float(steps - 1) * (0.5 * PI); // From 0 to 90º
             float thetaR = THETA_MIN + (float(y) + 0.5) * dThetaR;
-            float cosThetaR = cos(thetaR);
+            // float cosThetaR = cos(thetaR);
 
             for (uint z = 0; z < steps; ++z)
             {
@@ -123,9 +125,9 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
                 bsdf.Itrt = powers.b * betas.b;
                 vec3 B = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
 
-                fSum += S * cosThetaR * dThetaR * dPhiR * dPhiI;
-                fAlpha += A * cosThetaR * dThetaR * dPhiR * dPhiI;
-                fBeta += B * cosThetaR * dThetaR * dPhiR * dPhiI;
+                fSum += S * cosThetaI * dThetaR * dPhiR * dPhiI * 2.0;
+                fAlpha += A * cosThetaI * dThetaR * dPhiR * dPhiI * 2.0;
+                fBeta += B * cosThetaI * dThetaR * dPhiR * dPhiI * 2.0;
             }
         }
     }
@@ -143,10 +145,9 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
 
 
 void main() {
-    // BSDF setup ............................................................
 
-
-
+    // BSDF setup ...........................................................
+    
     bsdf.beta = material.beta;
     bsdf.lambda = material.lambda;
     bsdf.lambdaG = material.lambfaG;

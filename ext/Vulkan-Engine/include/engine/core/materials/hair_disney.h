@@ -23,7 +23,7 @@ class HairDisneyMaterial : public IMaterial
   protected:
     // Colors of different scatter events
     Vec3 m_Cr   = {1.0, 1.0, 1.0};
-    Vec3 m_Ctt  = {0.6, 0.4, 0.1};
+    Vec3 m_Ctt  = {0.6, 0.3, 0.2};
     Vec3 m_Ctrt = {0.6, 0.3, 0.2};
     Vec3 m_Cb   = {0.6, 0.3, 0.2};
     Vec3 m_Cf   = {0.6, 0.3, 0.2};
@@ -31,7 +31,7 @@ class HairDisneyMaterial : public IMaterial
     float m_Ir   = 1.0f;
     float m_Itt  = 1.0f;
     float m_Itrt = 1.0f;
-    float m_Ig   = 2.0f;
+    float m_Ig   = 1.0f;
     float m_Ib   = 1.0f;
     float m_If   = 1.0f;
     //

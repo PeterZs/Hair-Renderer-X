@@ -14,6 +14,8 @@ class HairScatteringPass : public ComputePass
     };
     std::vector<FrameDescriptors> m_descriptors;
 
+    Buffer m_normBuffer;
+
 
     void create_hair_scattering_images();
 
