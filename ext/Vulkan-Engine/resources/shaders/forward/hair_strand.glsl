@@ -51,7 +51,6 @@ layout(location = 6) out vec3 g_modelDir;
 layout(location = 7) out vec3 g_color;
 layout(location = 8) out vec3 g_origin;
 
-float thickness = 0.02;
 
 void emitQuadPoint(
     vec4 origin,
@@ -117,7 +116,8 @@ void main() {
 #include utils.glsl
 #include shadow_mapping.glsl
 #include reindhart.glsl
-#include BRDFs/marschner_BSDF.glsl
+#include sh.glsl
+#include BRDFs/hair_BSDF.glsl
 
 //Input
 layout(location = 0) in vec3 g_pos;
@@ -133,55 +133,41 @@ layout(location = 8) in vec3 g_origin;
 //Uniforms
 layout(set = 0, binding = 2) uniform sampler2DArray shadowMap;
 layout(set = 0, binding = 4) uniform samplerCube irradianceMap;
+layout(set = 0, binding = 7) uniform sampler3D DpTex;
+layout(set = 0, binding = 8) uniform sampler2D attTexFront;
+layout(set = 0, binding = 9) uniform sampler2D attTexBack;
+layout(set = 0, binding = 10) uniform sampler3D hairVoxels;
+layout(set = 0, binding = 11) uniform sampler2D hairNgTex;
+layout(set = 0, binding = 12) uniform sampler2D hairNgtTex;
+layout(set = 0, binding = 13) uniform sampler3D hairGITex;
+
 
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
-    vec3 baseColor;
+    vec3 sigma_a;
     float thickness;
+
+    float beta;
+    float shift;
+    float ior;
+    float density;
 
     float Rpower;
     float TTpower;
     float TRTpower;
-    float roughness;
+    float scatter ;
 
-    float scatter;
-    float shift;
-    float ior;
-    bool glints;
-
-    bool useScatter;
-    bool coloredScatter;
+    float azBeta;
     bool r;
     bool tt;
-
     bool trt;
-    bool occlusion;
+
 } material;
 
-float scatterWeight = 0.0;
-
-MarschnerBSDF bsdf;
+HairBSDF bsdf;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 outBrightColor;
-
-float computeShadow(LightUniform light, int lightId) {
-
-    vec4 posLightSpace = light.viewProj * vec4(g_modelPos, 1.0);
-
-    vec3 projCoords = posLightSpace.xyz / posLightSpace.w; //For x,y and Z
-
-    projCoords.xy = projCoords.xy * 0.5 + 0.5;
-
-    if(projCoords.z > 1.0 || projCoords.z < 0.0)
-        return 1.0;
-
-    vec3 lightDir = normalize(light.position.xyz - g_pos);
-    float bias = max(light.shadowData.x * 5.0 * (1.0 - dot(g_dir, lightDir)), light.shadowData.x);  //Modulate by angle of incidence
-
-  return 1.0 - filterPCF(shadowMap, lightId,int(light.shadowData.w), light.shadowData.y, projCoords, light.shadowData.x);
-}
-
 
 vec3 computeAmbient(vec3 n) {
 
@@ -195,35 +181,99 @@ vec3 computeAmbient(vec3 n) {
                 s, 0.0, c);
         vec3 rotatedNormal = normalize(rotationY * n);
 
-        MarschnerBSDF dummyBSDF = bsdf;
-        dummyBSDF.beta+=0.1;
-        ambient = evalMarschnerBSDF(
-                rotatedNormal, 
-                normalize(-g_pos),
-                texture(irradianceMap, rotatedNormal).rgb*scene.ambientIntensity,
-                dummyBSDF, 
-                material.r, 
-                false,  //Take oput transmitance
-                material.trt);
-
-
+      
     }else{
-        ambient = (scene.ambientIntensity * scene.ambientColor) *  bsdf.baseColor;
+        ambient = (scene.ambientIntensity * scene.ambientColor) ;
     }
     return ambient;
 }
 
+//Anysotropic. Decoding from a L1 SH
+float getNumberOfStrands(vec3 worldPos, vec3 lightWorldPos) {
+    vec3 dir = normalize(lightWorldPos - worldPos);
+
+    // Compute voxel UVW coords in object space
+    vec3 uvw = (worldPos - object.minCoord.xyz) / (object.maxCoord.xyz - object.minCoord.xyz);
+    uvw = clamp(uvw, 0.0, 0.9999);
+
+    ivec3 coord = ivec3(uvw * vec3(textureSize(hairVoxels, 0)));
+
+    // Fetch SH L1 and decode
+    vec4 SHL1 = texelFetch(hairVoxels, coord, 0);
+
+    return decodeScalarFromSHL1(SHL1, dir);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Special shadow mapping for hair for controlling density
+//////////////////////////////////////////////////////////////////////////
+float bilinear(float v[4], vec2 f) {
+    return mix(mix(v[0], v[1], f.x), mix(v[2], v[3], f.x), f.y);
+}
+
+vec3 bilinear(vec3 v[4], vec2 f) {
+    return mix(mix(v[0], v[1], f.x), mix(v[2], v[3], f.x), f.y);
+}
+vec3 hairShadow(out vec3 spread, out float directF, vec3 pShad, sampler2DArray shadowMap, int lightId, float density) {
+    ivec2 size = textureSize(shadowMap, 0).xy;
+    vec2 t = pShad.xy * vec2(size) + 0.5;
+    vec2 f = t - floor(t);
+    vec2 s = 0.5 / vec2(size);
+
+    vec2 tcp[4];
+    tcp[0] = pShad.xy + vec2(-s.x, -s.y);
+    tcp[1] = pShad.xy + vec2(s.x, -s.y);
+    tcp[2] = pShad.xy + vec2(-s.x, s.y);
+    tcp[3] = pShad.xy + vec2(s.x, s.y);
+
+    const float coverage = 0.05;
+    const vec3 a_f = vec3(0.507475266, 0.465571405, 0.394347166);
+    const vec3 w_f = vec3(0.028135575, 0.027669785, 0.027669785);
+    float dir[4];
+    vec3 spr[4], t_d[4];
+    for(int i = 0; i < 4; ++i) {
+        float z = texture(shadowMap, vec3(tcp[i], lightId)).r;
+        float h = max(0.0, pShad.z - z);
+        float n = h * density * 10000.0;
+        dir[i] = pow(1.0 - coverage, n);
+        t_d[i] = pow(1.0 - coverage * (1.0 - a_f), vec3(n, n, n));
+        spr[i] = n * coverage * w_f;
+    }
+
+    directF = bilinear(dir, f);
+    spread = bilinear(spr, f);
+    return bilinear(t_d, f);
+}
+
+vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap, float density, vec3 pos, out vec3 spread, out float directF) {
+    vec4 posLightSpace = light.viewProj * vec4(pos, 1.0);
+    vec3 projCoords = posLightSpace.xyz / posLightSpace.w;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+
+    vec3 transDirect = hairShadow(spread, directF, projCoords, shadowMap, lightId, density);
+    directF *= 0.5;
+    return transDirect * 0.5;
+}
+
 void main() {
+    //Number of traversed strands
+    float nStrands;
 
     //BSDF setup ............................................................
-    bsdf.tangent =  normalize(g_dir);
-    bsdf.baseColor = material.baseColor;
-    bsdf.beta = material.roughness;
+    bsdf.tangent = normalize(g_dir);
+
+    bsdf.beta = material.beta;
+    bsdf.azBeta = material.azBeta;
     bsdf.shift = material.shift;
-    bsdf.ior = material.ior;
+    bsdf.sigma_a = material.sigma_a;
+    bsdf.ior =  material.ior;
+    bsdf.density = material.density;
+
     bsdf.Rpower = material.Rpower;
     bsdf.TTpower = material.TTpower;
     bsdf.TRTpower = material.TRTpower;
+
+    bsdf.useScatter = material.scatter == 1.0 ? true : false;
 
 
     //DIRECT LIGHTING .......................................................
@@ -232,21 +282,34 @@ void main() {
         //If inside liught area influence
         if(isInAreaOfInfluence(scene.lights[i], g_pos)) {
 
-            vec3 lighting = evalMarschnerBSDF(
+            vec3    shadow = vec3(1.0);
+            vec3    spread = vec3(0.0);
+            float   directFraction = 1.0;
+            if(int(object.otherParams.y) == 1 && scene.lights[i].shadowCast == 1) {
+                if(scene.lights[i].shadowType == 0) //Classic
+                    shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
+                if(scene.lights[i].shadowType == 1) //VSM   
+                    shadow = computeHairShadow(scene.lights[i], i,shadowMap, bsdf.density, g_modelPos,spread, directFraction);
+            }
+            nStrands = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position,1.0)).xyz );
+            vec3 lighting = evalHairBSDF(
                 normalize(scene.lights[i].position.xyz - g_pos), 
                 normalize(-g_pos),
                 scene.lights[i].color * scene.lights[i].intensity,
                 bsdf, 
+                shadow,
+                spread,
+                directFraction,
+                DpTex,
+                attTexBack,
+                attTexFront,
+                hairNgTex,
+                hairNgtTex,
+                hairGITex,
+                nStrands,
                 material.r, 
                 material.tt, 
                 material.trt);
-
-            if(int(object.otherParams.y) == 1 && scene.lights[i].shadowCast == 1) {
-                if(scene.lights[i].shadowType == 0) //Classic
-                    lighting *= computeShadow(scene.lights[i], i);
-                if(scene.lights[i].shadowType == 1) //VSM   
-                    lighting *= computeVarianceShadow(shadowMap,scene.lights[i],i,g_modelPos);
-            }
 
             color += lighting;
         }
@@ -267,13 +330,15 @@ void main() {
         color = f * color + (1 - f) * scene.fogColor.rgb;
     }
 
+//    color = vec3(nStrands/100.0,0.0,0.0);
 
     fragColor = vec4(color, 1.0);
-    // check whether result is higher than some threshold, if so, output as bloom threshold color
+     // check whether result is higher than some threshold, if so, output as bloom threshold color
     float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
     if(brightness > 1.0)
         outBrightColor = vec4(color, 1.0);
     else
         outBrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+    
 
 }

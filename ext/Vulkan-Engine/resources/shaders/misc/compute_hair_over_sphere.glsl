@@ -1,8 +1,9 @@
 #shader compute
 #version 460
 #include BRDFs/disney_hair_BSDF.glsl
+#extension GL_EXT_shader_atomic_float: enable
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 16) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(rgba32f, set = 0, binding = 0) uniform writeonly image2D outputFrontAtt;
 layout(rgba32f, set = 0, binding = 1) uniform writeonly image2D outputBackAtt;
@@ -11,7 +12,7 @@ layout(rgba32f, set = 0, binding = 5) uniform writeonly image2D outputFrontShift
 layout(rgba32f, set = 0, binding = 6) uniform writeonly image2D outputBackShifts;
 layout(rgba32f, set = 0, binding = 7) uniform writeonly image2D outputFrontBetas;
 layout(rgba32f, set = 0, binding = 8) uniform writeonly image2D outputBackBetas;
-layout(set = 0, binding = 9) buffer BSDFIntegralBuffer {
+layout(set = 0, binding = 10) buffer BSDFIntegralBuffer {
     vec4 normIntegral;
 };
 
@@ -49,57 +50,65 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
 
 } material;
 
-uint integrationSteps = 64;
+const uint STEPS = 64;
+const uint STEPS_C = 64*64*64;
 
 DisneyHairBSDF bsdf;
 
-vec3 integrateOverSphere(float thetaI, float thetaR, float phiD, uint steps) {
-
-    const float PHI_MIN      = 0;   // 0
-    const float PHI_MAX      = PI;  // 180
-
-    const float THETA_MIN  = 0.0;
-    const float THETA_MAX  = 1.57079632679;   
-
-    float dTheta = (THETA_MAX - THETA_MIN) / steps;
-    float dPhi   = (PHI_MAX - PHI_MIN)     / steps;
-
-
-   
-    vec3 f = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
-
-    atomicAdd(normIntegral.r, f.r);
-    atomicAdd(normIntegral.g, f.g);
-    atomicAdd(normIntegral.b, f.b);        
-
-}
-
 void main() {
 
-    uint i = gl_GlobalInvocationID.x; // thetaI index
-    uint j = gl_GlobalInvocationID.y; // thetaR index
-    uint k = gl_GlobalInvocationID.z; // phiD index
+     // BSDF setup ...........................................................
+    
+    bsdf.beta = material.beta;
+    bsdf.lambda = material.lambda;
+    bsdf.lambdaG = material.lambfaG;
+    bsdf.shift = material.shift;
+    bsdf.ior = material.ior;
+    bsdf.density = material.density;
 
-    uint steps = integrationSteps;
+    bsdf.Ir = material.Ir;
+    bsdf.Itt = material.Itt;
+    bsdf.Itrt = material.Itrt;
+    bsdf.Ig = material.Ig;
+    bsdf.Ib = material.Ib;
+    bsdf.If = material.If;
 
-    if (i >= steps || j >= steps || k >= steps) return;
+    bsdf.Cr = material.Cr;
+    bsdf.Ctt = material.Ctt;
+    bsdf.Ctrt = material.Ctrt;
+    bsdf.Cb = material.Cb;
+    bsdf.Cf = material.Cf;
 
-    // Compute actual angles
-    float thetaI = (float(i) + 0.5) * (0.5 * PI) / float(steps);
-    float thetaR = (float(j) + 0.5) * (0.5 * PI) / float(steps);
-    float phiD   = (float(k) + 0.5) * (PI) / float(steps);
+    bsdf.angleG = 1.17;
 
-    // Evaluate BSDF
-    vec3 f = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
+   vec3 fSum = vec3(0.0); 
 
     // Differential solid angle (for thetaR)
-    float dTheta = (0.5 * PI) / float(steps); // from 0 to PI/2
-    float dPhi   = PI / float(steps);         // from 0 to PI
-    float weight = sin(thetaR) * dTheta * dPhi;
+    float dTheta = (0.5 * PI) / float(STEPS); // from 0 to PI/2
+    float dPhi   = PI / float(STEPS);         // from 0 to PI
 
-    // Atomic accumulate
-    atomicAdd(normIntegral.r, f.r * weight * 4.0);
-    atomicAdd(normIntegral.g, f.g * weight * 4.0);
-    atomicAdd(normIntegral.b, f.b * weight * 4.0);
+
+    for(int i = 0; i < STEPS; i++) {
+        float thetaI = (float(i) + 0.5) * (0.5 * PI) / float(STEPS);
+
+        for(int j = 0; j < STEPS; j++) {
+            float thetaR = (float(j) + 0.5) * (0.5 * PI) / float(STEPS);
+
+            for(int k = 0; k < STEPS; k++) {
+            float phiD   = (float(k) + 0.5) * (PI) / float(STEPS);
+        
+            float weight = cos(thetaR) * sin(thetaR) * dTheta * dPhi;
+            
+            // Evaluate BSDF
+            // vec3 fSum += evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
+            fSum += vec3(1.0) * weight * 4.0;
+                
+            }
+        }
+    }
+
+    normIntegral.rgb = fSum; 
+
+   
 
 }

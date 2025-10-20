@@ -98,6 +98,7 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
     LayoutBinding backBetaBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 7);
     LayoutBinding frontBetaBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 8);
     LayoutBinding GIbinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 9);
+    LayoutBinding bufferBinding(UNIFORM_STORAGE_BUFFER, SHADER_STAGE_COMPUTE, 10);
     m_descriptorPool.set_layout(GLOBAL_LAYOUT,
                                 {backImgBinding,
                                  frontImgBinding,
@@ -108,7 +109,8 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
                                  frontShiftBinging,
                                  backBetaBinding,
                                  frontBetaBinding,
-                                 GIbinding});
+                                 GIbinding,
+                                 bufferBinding});
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_COMPUTE, 0);
     LayoutBinding materialBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_COMPUTE, 1);
@@ -129,8 +131,7 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 7, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 8, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_GI, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 9, UNIFORM_STORAGE_IMAGE);
-        m_descriptorPool.set_descriptor_write(
-            &m_normBuffer, sizeof(Vec4), m_device->pad_uniform_buffer_size(sizeof(Vec4)), &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 10);
+        m_descriptorPool.set_descriptor_write(&m_normBuffer, sizeof(Vec4), 0.0f, &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 10);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -172,8 +173,8 @@ void HairScatteringPass::setup_shader_passes() {
 
     m_shaderPasses[2] = GIPass;
 
-    ComputeShaderPass* normPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_over_sphere.glsl");
-    normPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+    ComputeShaderPass* normPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_over_sphere.glsl");
+    normPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
     normPass->build_shader_stages();
     normPass->build(m_descriptorPool);
@@ -298,7 +299,24 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                     // Offset calculation
                     uint32_t objectOffset = currentFrame.uniformBuffers[1].strideSize * mesh_idx;
 
-                    ShaderPass* shaderPass = m_shaderPasses[0];
+                    ShaderPass* shaderPass = m_shaderPasses[3];
+
+                    // Bind pipeline
+                    cmd.bind_shaderpass(*shaderPass);
+                    // GLOBAL LAYOUT BINDING
+                    cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {}, BINDING_TYPE_COMPUTE);
+                    // PER OBJECT LAYOUT BINDING
+                    cmd.bind_descriptor_set(
+                        m_descriptors[currentFrame.index].objectDescritor, 1, *shaderPass, {objectOffset, objectOffset}, BINDING_TYPE_COMPUTE);
+
+                    // Dispatch the compute shader
+                    cmd.dispatch_compute({1, 1, 1});
+
+                    cmd.pipeline_barrier(m_normBuffer, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_COMPUTE_SHADER);
+
+                    // --------------------------------------------------------------
+
+                    shaderPass = m_shaderPasses[0];
                     // Bind pipeline
                     cmd.bind_shaderpass(*shaderPass);
                     // GLOBAL LAYOUT BINDING
@@ -460,6 +478,7 @@ void HairScatteringPass::cleanup() {
     ResourceManager::HAIR_BACK_BETAS.cleanup();
     ResourceManager::HAIR_FRONT_BETAS.cleanup();
     ResourceManager::HAIR_GI.cleanup();
+    m_normBuffer.cleanup();
 }
 
 } // namespace Core

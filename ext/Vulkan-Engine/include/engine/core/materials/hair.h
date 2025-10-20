@@ -230,6 +230,201 @@ class HairMaterial : public IMaterial
     }
 };
 
+/// Epic's. Only works with geometry defined as lines.
+class HairEpicMaterial : public IMaterial
+{
+  protected:
+    Vec3 m_baseColor = {0.27f, 0.14f, 0.04f};
+
+    float m_thickness = 0.003f;
+
+    bool  m_R        = true; // Reflection
+    float m_Rpower   = 1.0f;
+    bool  m_TT       = true; // Transmitance
+    float m_TTpower  = 1.0f;
+    bool  m_TRT      = true; // Second reflection
+    float m_TRTpower = 2.0f;
+
+    float m_roughness = 0.4f;
+    float m_specular  = 1.0f;
+    float m_metallic  = 0.0f;
+
+    float m_shift = 5.2f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
+    float m_ior   = 1.55f;
+
+    // Query
+    bool m_useSeparableR       = false;
+    bool m_useLegacyAbsorption = false;
+    bool m_useBacklit          = false;
+    bool m_clampBSDFValue      = false;
+    bool m_useScatter          = false;
+
+    std::unordered_map<int, ITexture*> m_textures;
+
+    std::unordered_map<int, bool> m_textureBindingState;
+
+    virtual Graphics::MaterialUniforms                get_uniforms() const;
+    virtual inline std::unordered_map<int, ITexture*> get_textures() const {
+        return m_textures;
+    }
+
+    virtual std::unordered_map<int, bool> get_texture_binding_state() const {
+        return m_textureBindingState;
+    }
+    virtual void set_texture_binding_state(int id, bool state) {
+        m_textureBindingState[id] = state;
+    }
+
+  public:
+    HairEpicMaterial(Vec3 baseColor = {0.27f, 0.14f, 0.04f})
+        : IMaterial(HAIR_STR_EPIC_TYPE)
+        , m_baseColor(baseColor) {
+    }
+    HairEpicMaterial(Vec3 baseColor, MaterialSettings params)
+        : IMaterial(HAIR_STR_EPIC_TYPE, params)
+        , m_baseColor(baseColor) {
+    }
+
+    inline Vec3 get_base_color() const {
+        return m_baseColor;
+    }
+    inline void set_base_color(Vec3 c) {
+        m_baseColor = c;
+        m_isDirty   = true;
+    }
+
+    float get_thickness() const {
+        return m_thickness;
+    }
+    void set_thickness(float thickness) {
+        m_thickness = thickness;
+    }
+
+    // Primary reflection toggle
+    bool get_R() const {
+        return m_R;
+    }
+    void set_R(bool R) {
+        m_R       = R;
+        m_isDirty = true;
+    }
+
+    // Primary reflection scale
+    float get_Rpower() const {
+        return m_Rpower;
+    }
+    void set_Rpower(float Rpower) {
+        m_Rpower  = Rpower;
+        m_isDirty = true;
+    }
+
+    // Transmitance reflection toggle
+    bool get_TT() const {
+        return m_TT;
+    }
+    void set_TT(bool TT) {
+        m_TT = TT;
+    }
+
+    // Transmitance reflection scale
+    float get_TTpower() const {
+        return m_TTpower;
+    }
+    void set_TTpower(float TTpower) {
+        m_TTpower = TTpower;
+        m_isDirty = true;
+    }
+
+    // Secoundary reflection toggle
+    bool get_TRT() const {
+        return m_TRT;
+    }
+    void set_TRT(bool TRT) {
+        m_TRT = TRT;
+    }
+
+    // Secoundary reflection scale
+    float get_TRTpower() const {
+        return m_TRTpower;
+    }
+    void set_TRTpower(float TRTpower) {
+        m_TRTpower = TRTpower;
+        m_isDirty  = true;
+    }
+
+    float get_roughness() const {
+        return m_roughness;
+    }
+    void set_roughness(float roughness) {
+        m_roughness = roughness;
+        m_isDirty   = true;
+    }
+    float get_specular() const {
+        return m_specular;
+    }
+    void set_specular(float spec) {
+        m_specular = spec;
+        m_isDirty  = true;
+    }
+    float get_metallic() const {
+        return m_metallic;
+    }
+    void set_metallic(float met) {
+        m_metallic = met;
+        m_isDirty  = true;
+    }
+
+    float get_shift() const {
+        return m_shift;
+    }
+    void set_shift(float shift) {
+        m_shift   = shift;
+        m_isDirty = true;
+    }
+
+    float get_ior() const {
+        return m_ior;
+    }
+    void set_ior(float ior) {
+        m_ior     = ior;
+        m_isDirty = true;
+    }
+
+    bool useSeparableR() const {
+        return m_useSeparableR;
+    }
+    bool useLegacyAbsorption() const {
+        return m_useLegacyAbsorption;
+    }
+    bool useBacklit() const {
+        return m_useBacklit;
+    }
+    bool clampBSDFValue() const {
+        return m_clampBSDFValue;
+    }
+
+    void setUseSeparableR(bool value) {
+        m_useSeparableR = value;
+    }
+    void setUseLegacyAbsorption(bool value) {
+        m_useLegacyAbsorption = value;
+    }
+    void setUseBacklit(bool value) {
+        m_useBacklit = value;
+    }
+    void setClampBSDFValue(bool value) {
+        m_clampBSDFValue = value;
+    }
+
+    bool get_useScatter() const {
+        return m_useScatter;
+    }
+    void set_useScatter(bool useScatter) {
+        m_useScatter = useScatter;
+        m_isDirty    = true;
+    }
+};
+
 } // namespace Core
 VULKAN_ENGINE_NAMESPACE_END
 #endif

@@ -254,6 +254,20 @@ void Graphics::CommandBuffer::pipeline_barrier(Image&        img,
 
     img.currentLayout = newLayout;
 }
+void Graphics::CommandBuffer::pipeline_barrier(Buffer& buffer, AccessFlags srcMask, AccessFlags dstMask, PipelineStage srcStage, PipelineStage dstStage) {
+
+    VkBufferMemoryBarrier barrier = {};
+    barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.srcAccessMask         = Translator::get(srcMask);
+    barrier.dstAccessMask         = Translator::get(dstMask);
+    barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer                = buffer.handle;
+    barrier.offset                = 0;
+    barrier.size                  = buffer.size; // Usa VK_WHOLE_SIZE si no tienes el tamaño
+
+    vkCmdPipelineBarrier(handle, Translator::get(srcStage), Translator::get(dstStage), 0, 0, nullptr, 1, &barrier, 0, nullptr);
+}
 void Graphics::CommandBuffer::clear_image(Image& img, ImageLayout layout, ImageAspect aspect, Vec4 clearColor) {
 
     VkClearColorValue vclearColor = {};

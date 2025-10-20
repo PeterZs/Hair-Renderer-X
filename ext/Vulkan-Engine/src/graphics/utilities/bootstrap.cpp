@@ -5,10 +5,7 @@ VULKAN_ENGINE_NAMESPACE_BEGIN
 
 namespace Graphics {
 #pragma region INSTANCE
-VkInstance Booter::create_instance(const char*              appName,
-                                   const char*              engineName,
-                                   bool                     validation,
-                                   std::vector<const char*> validationLayers) {
+VkInstance Booter::create_instance(const char* appName, const char* engineName, bool validation, std::vector<const char*> validationLayers) {
     if (validation && !Utils::check_validation_layer_suport(validationLayers))
     {
         throw VKFW_Exception(" validation layers requested, but not available!");
@@ -77,8 +74,7 @@ std::vector<const char*> Booter::get_required_extensions(bool validation) {
 }
 #pragma region GPU
 
-VkPhysicalDevice
-Booter::pick_graphics_card_device(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
+VkPhysicalDevice Booter::pick_graphics_card_device(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> extensions) {
     VkPhysicalDevice gpu = VK_NULL_HANDLE;
 
     uint32_t deviceCount = 0;
@@ -114,9 +110,7 @@ Booter::pick_graphics_card_device(VkInstance instance, VkSurfaceKHR surface, std
     return gpu;
 }
 
-int Booter::rate_device_suitability(VkPhysicalDevice         device,
-                                    VkSurfaceKHR             surface,
-                                    std::vector<const char*> extensions) {
+int Booter::rate_device_suitability(VkPhysicalDevice device, VkSurfaceKHR surface, std::vector<const char*> extensions) {
     VkPhysicalDeviceProperties deviceProperties;
 
     // VR, 64B floats and multi-viewport
@@ -146,7 +140,7 @@ int Booter::rate_device_suitability(VkPhysicalDevice         device,
     if (check_device_extension_support(device, extensions))
     {
         Utils::SwapChainSupportDetails swapChainSupport = Utils::query_swapchain_support(device, surface);
-        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        swapChainAdequate                               = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
         if (!swapChainAdequate)
             return 0;
     } else
@@ -184,8 +178,7 @@ VkDevice Booter::create_logical_device(std::unordered_map<QueueType, VkQueue>& q
 
     Utils::QueueFamilyIndices            queueFamilies = Utils::find_queue_families(gpu, surface);
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t>                   uniqueQueueFamilies = {
-        queueFamilies.graphicsFamily.value(), queueFamilies.presentFamily.value(), queueFamilies.computeFamily.value()};
+    std::set<uint32_t> uniqueQueueFamilies = {queueFamilies.graphicsFamily.value(), queueFamilies.presentFamily.value(), queueFamilies.computeFamily.value()};
 
     float queuePriority = 1.0f;
     for (uint32_t queueFamily : uniqueQueueFamilies)
@@ -236,8 +229,8 @@ VkDevice Booter::create_logical_device(std::unordered_map<QueueType, VkQueue>& q
     {
         enabledExtensions.push_back("VK_EXT_extended_dynamic_state3");
 
-        extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
-        extendedDynamicState3Features.pNext = physicalDeviceFeatures2.pNext;
+        extendedDynamicState3Features.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+        extendedDynamicState3Features.pNext                            = physicalDeviceFeatures2.pNext;
         extendedDynamicState3Features.extendedDynamicState3PolygonMode = VK_TRUE;
 
         physicalDeviceFeatures2.pNext = &extendedDynamicState3Features;
@@ -248,14 +241,16 @@ VkDevice Booter::create_logical_device(std::unordered_map<QueueType, VkQueue>& q
     VkPhysicalDeviceBufferDeviceAddressFeaturesKHR   bufferDeviceAddressFeatures   = {};
     VkPhysicalDeviceDescriptorIndexingFeaturesEXT    descriptorIndexingFeatures    = {};
     VkPhysicalDeviceRayQueryFeaturesKHR              rayQueryFeatures              = {};
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT     atomicFloatFeatures           = {};
 
-    // Check RTX extensions
+    // ChecK extensions
     if (Utils::is_device_extension_supported(gpu, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) &&
         Utils::is_device_extension_supported(gpu, VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) &&
         Utils::is_device_extension_supported(gpu, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) &&
         Utils::is_device_extension_supported(gpu, VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) &&
         Utils::is_device_extension_supported(gpu, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) &&
-        Utils::is_device_extension_supported(gpu, VK_KHR_RAY_QUERY_EXTENSION_NAME))
+        Utils::is_device_extension_supported(gpu, VK_KHR_RAY_QUERY_EXTENSION_NAME) &&
+        Utils::is_device_extension_supported(gpu, VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME))
     {
 
         enabledExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
@@ -264,27 +259,32 @@ VkDevice Booter::create_logical_device(std::unordered_map<QueueType, VkQueue>& q
         enabledExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
         enabledExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        enabledExtensions.push_back(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
 
         rayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
         rayTracingPipelineFeatures.pNext = physicalDeviceFeatures2.pNext;
 
-        accelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-        accelerationStructureFeatures.pNext = &rayTracingPipelineFeatures;
+        accelerationStructureFeatures.sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        accelerationStructureFeatures.pNext                 = &rayTracingPipelineFeatures;
         accelerationStructureFeatures.accelerationStructure = true;
 
         rayQueryFeatures.sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
         rayQueryFeatures.pNext    = &accelerationStructureFeatures;
         rayQueryFeatures.rayQuery = true;
 
-        bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
-        bufferDeviceAddressFeatures.pNext = &rayQueryFeatures;
+        bufferDeviceAddressFeatures.sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
+        bufferDeviceAddressFeatures.pNext               = &rayQueryFeatures;
         bufferDeviceAddressFeatures.bufferDeviceAddress = true;
 
         descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
         descriptorIndexingFeatures.pNext = &bufferDeviceAddressFeatures;
 
+        atomicFloatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+        atomicFloatFeatures.shaderBufferFloat32AtomicAdd = true;
+        atomicFloatFeatures.pNext = &descriptorIndexingFeatures;
+
         // Finally, attach the descriptorIndexingFeatures to the physicalDeviceFeatures2
-        physicalDeviceFeatures2.pNext = &descriptorIndexingFeatures;
+        physicalDeviceFeatures2.pNext = &atomicFloatFeatures;
     }
 
     physicalDeviceFeatures2.features = features;

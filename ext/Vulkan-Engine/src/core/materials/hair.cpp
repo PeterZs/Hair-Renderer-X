@@ -38,6 +38,47 @@ Graphics::MaterialUniforms HairMaterial::get_uniforms() const {
     return uniforms;
 }
 
+Graphics::MaterialUniforms HairEpicMaterial::get_uniforms() const {
+    // Alignment in shader
+    //-----------------
+    // vec3  baseColor;
+    // float thickness;
+
+    // float roughness;
+    // float metallic;
+    // float specular;
+    // float shift;
+
+    // float ior;
+    // float Rpower;
+    // float TTpower;
+    // float TRTpower;
+
+    // float opaqueVisibility;
+    // bool  useLegacyAbsorption;
+    // bool  useSeparableR;
+    // bool  useBacklit;
+
+    // bool clampBSDFValue;
+    //  float r;
+    // float tt;
+    // float trt;
+    // float SCATTER;
+
+    //-----------------
+    auto deg2rad = [](float deg) { return deg / 180.0 * 3.14159265358979323846; };
+
+    Graphics::MaterialUniforms uniforms;
+    uniforms.dataSlot1 = {m_baseColor, m_thickness};
+    uniforms.dataSlot2 = {m_roughness, m_metallic, m_specular, deg2rad(m_shift)};
+    uniforms.dataSlot3 = {m_ior, m_Rpower, m_TTpower, m_TRTpower};
+    uniforms.dataSlot4 = {0.0, m_useLegacyAbsorption, m_useSeparableR, m_useBacklit};
+    uniforms.dataSlot5 = {m_clampBSDFValue, m_R, m_TT, m_TRT};
+    uniforms.dataSlot6 = {m_useScatter, 0.0, 0.0, 0.0};
+
+    return uniforms;
+}
+
 } // namespace Core
 
 VULKAN_ENGINE_NAMESPACE_END

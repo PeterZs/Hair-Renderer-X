@@ -233,7 +233,7 @@ void ForwardPass::setup_shader_passes() {
     m_shaderPasses[IMaterial::Type::HAIR_STR_TYPE]   = hairStrandPass;
 
     GraphicShaderPass* hairStrandPass2 =
-        new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/forward/hair_strand3.glsl");
+        new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/forward/hair_strand_epic.glsl");
     hairStrandPass2->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, true}};
     hairStrandPass2->graphicSettings.attributes      = {
         {POSITION_ATTRIBUTE, true}, {NORMAL_ATTRIBUTE, false}, {UV_ATTRIBUTE, false}, {TANGENT_ATTRIBUTE, true}, {COLOR_ATTRIBUTE, true}};
@@ -242,7 +242,7 @@ void ForwardPass::setup_shader_passes() {
     hairStrandPass2->graphicSettings.sampleShading    = false;
     hairStrandPass2->graphicSettings.blendAttachments = blendAttachments;
     hairStrandPass2->graphicSettings.topology         = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    m_shaderPasses[IMaterial::Type::HAIR_STR_TYPE]    = hairStrandPass2;
+    m_shaderPasses[IMaterial::Type::HAIR_STR_EPIC_TYPE]    = hairStrandPass2;
 
     GraphicShaderPass* hairStrandPassDisney =
         new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/forward/hair_strand_disney.glsl");

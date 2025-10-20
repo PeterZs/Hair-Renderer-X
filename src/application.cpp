@@ -90,20 +90,21 @@ void HairViewer::setup() {
     Tools::Loaders::load_3D_file(hair, MESH_PATH + "straight.hair", false);
     hair->set_scale(0.053f);
     hair->set_rotation({90.0, 180.0f, 0.0f});
-    HairDisneyMaterial* hmat = new HairDisneyMaterial();
+    // HairDisneyMaterial* hmat = new HairDisneyMaterial();
+    HairEpicMaterial* hmat = new HairEpicMaterial();
     hmat->set_thickness(0.0025f);
     hair->push_material(hmat);
     hair->set_name("Hair");
 
-    Mesh* hair2 = new Mesh();
-    Tools::Loaders::load_3D_file(hair2, MESH_PATH + "curly.hair", false);
-    hair2->set_scale(0.053f);
-    hair2->set_rotation({90.0, 180.0f, 0.0f});
-    HairMaterial* hmat2 = new HairMaterial(0.8);
-    hmat2->set_thickness(0.0025f);
-    hair2->push_material(hmat2);
-    hair2->set_name("Hair Curly");
-    hair2->set_active(false);
+    // Mesh* hair2 = new Mesh();
+    // Tools::Loaders::load_3D_file(hair2, MESH_PATH + "curly.hair", false);
+    // hair2->set_scale(0.053f);
+    // hair2->set_rotation({90.0, 180.0f, 0.0f});
+    // HairMaterial* hmat2 = new HairMaterial(0.8);
+    // hmat2->set_thickness(0.0025f);
+    // hair2->push_material(hmat2);
+    // hair2->set_name("Hair Curly");
+    // hair2->set_active(false);
 
     Mesh* head = new Mesh();
     Tools::Loaders::load_3D_file(head, MESH_PATH + "woman2.ply");
@@ -132,7 +133,7 @@ void HairViewer::setup() {
     // head->add_child(hair);
     // m_scene->add(head);
     m_scene->add(hair);
-    m_scene->add(hair2);
+    // m_scene->add(hair2);
 #endif
 
     m_scene->set_ambient_color({0.05, 0.05, 0.05});

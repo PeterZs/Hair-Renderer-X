@@ -11,6 +11,9 @@ layout(rgba32f, set = 0, binding = 5) uniform writeonly image2D outputFrontShift
 layout(rgba32f, set = 0, binding = 6) uniform writeonly image2D outputBackShifts;
 layout(rgba32f, set = 0, binding = 7) uniform writeonly image2D outputFrontBetas;
 layout(rgba32f, set = 0, binding = 8) uniform writeonly image2D outputBackBetas;
+layout(set = 0, binding = 10) buffer BSDFIntegralBuffer {
+    vec4 normIntegral;
+};
 
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
@@ -48,13 +51,7 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
 
 uint integrationSteps = 64;
 
-
-    DisneyHairBSDF bsdf;
-
-
-
-
-
+DisneyHairBSDF bsdf;
 
 vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3 avgShift, out vec3 avgBeta) {
 
@@ -112,18 +109,17 @@ vec3 integrateOverHemisphere(float thetaI, uint steps, uint hemisphere, out vec3
                 bsdf.Ir = powers.r;
                 bsdf.Itt = powers.g;
                 bsdf.Itrt = powers.b;
-                vec3 S = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
-
+                vec3 S = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true) / normIntegral.rgb;
                 
                 bsdf.Ir = powers.r * shifts.r;
                 bsdf.Itt = powers.g * shifts.g;
                 bsdf.Itrt = powers.b * shifts.b;
-                vec3 A = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
+                vec3 A = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true) / normIntegral.rgb;
 
                 bsdf.Ir = powers.r * betas.r;
                 bsdf.Itt = powers.g * betas.g;
                 bsdf.Itrt = powers.b * betas.b;
-                vec3 B = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true);
+                vec3 B = evalDirectDisneyHairBSDF(thetaI, thetaR, phiD, bsdf, true, true, true) / normIntegral.rgb;
 
                 fSum += S * cosThetaI * dThetaR * dPhiR * dPhiI * 2.0;
                 fAlpha += A * cosThetaI * dThetaR * dPhiR * dPhiI * 2.0;

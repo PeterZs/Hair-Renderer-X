@@ -46,6 +46,7 @@ class IMaterial
         HAIR_STR_TYPE        = 3,
         HAIR_CARD_TYPE       = 4,
         HAIR_STR_DISNEY_TYPE = 5,
+        HAIR_STR_EPIC_TYPE  = 6,
     };
 
     static IMaterial* DEBUG_MATERIAL;
