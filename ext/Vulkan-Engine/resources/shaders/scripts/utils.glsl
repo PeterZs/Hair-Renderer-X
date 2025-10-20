@@ -9,7 +9,7 @@ vec3 shiftTangent(vec3 T, vec3 N, float shift) {
     return normalize(shiftedT);
 }
 
-float getLuminance(vec3 li) {
+float luminance(vec3 li) {
     return 0.2126 * li.r + 0.7152 * li.g + 0.0722 * li.b;
 }
 
@@ -27,4 +27,21 @@ vec3 orthogonal(vec3 u){
 	u = normalize(u);
 	vec3 v = vec3(0.99146, 0.11664, 0.05832); // Pick any normalized vector.
 	return abs(dot(u, v)) > 0.99999 ? cross(u, vec3(0, 1, 0)) : cross(u, v);
+}
+
+float pow2(float x) {
+  return x * x;
+}
+vec3 pow2(vec3 x) {
+  return x * x;
+}
+float saturate(float x) {
+  return clamp(x, 0.0, 1.0);
+}
+
+vec3 fromLinearAbsorption(vec3 x) {
+  return sqrt(x);
+}
+vec3 toLinearAbsorption(vec3 x) {
+  return x * x;
 }

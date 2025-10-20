@@ -40,20 +40,19 @@ struct EpicHairBSDF {
 
 };
 
+struct HairAverageScattering {
+  vec3 A_back;
+  vec3 A_front;
+};
+
+struct HairTransmittanceMask {
+  float visibility;
+  float hairCount;
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-float pow2(float x) {
-  return x * x;
-}
-float saturate(float x) {
-  return clamp(x, 0.0, 1.0);
-}
-
-float luminance(vec3 color) {
-  return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
-}
 
 vec3 hairColorToAbsorption(vec3 C) {
   const float B = 0.3;
@@ -74,6 +73,11 @@ float g(float theta, float beta, bool bClampBSDFValue) {
 	// similar.
   const float DenominatorB = bClampBSDFValue ? max(beta, 0.01) : beta;
   return exp(-0.5 * pow2(theta) / (beta * beta)) / (sqrt(2 * PI) * DenominatorB); // No unit-height
+}
+float g2(float theta, float beta) {
+	//const float A = 1.f / sqrt(2 * PI * Variance);
+  const float A = 1.;
+  return A * exp(-0.5 * pow2(theta) / beta);
 }
 
 float fresnel(float cosTheta, float ior) {
@@ -114,7 +118,7 @@ vec3 evalMultipleScattering(
 // [Pekelis et al. 2015, "A Data-Driven Light Scattering Model for Hair"]
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-vec3 evalEpicHairBSDF(vec3 L, vec3 V, vec3 N, float shadow, EpicHairBSDF bsdf, float inBacklit, float area, bool r, bool tt, bool trt, bool scatter ) {
+vec3 evalEpicHairBSDF(vec3 L, vec3 V, vec3 N, float shadow, EpicHairBSDF bsdf, float inBacklit, float area, bool r, bool tt, bool trt, bool scatter) {
 
   // to prevent NaN with decals
 	// OR-18489 HERO: IGGY: RMB on E ability causes blinding hair effect
@@ -230,5 +234,127 @@ vec3 evalEpicHairBSDF(vec3 L, vec3 V, vec3 N, float shadow, EpicHairBSDF bsdf, f
   S = -min(-S, 0.0);
 
   return S;
+
+}
+
+
+// Dual scattering computation are done here for faster iteration (i.e., does not invalidate tons of shaders)
+EpicHairBSDF computeDualScatteringTerms(
+  const HairTransmittanceMask TransmittanceMask,
+  const HairAverageScattering AverageScattering,
+  const vec3 V,
+  const vec3 L,
+  const vec3 T,
+  EpicHairBSDF bsdf
+) {
+  const float SinThetaL = clamp(dot(T, L), -1.0, 1.0);
+  const float SinThetaV = clamp(dot(T, V), -1.0, 1.0);
+  const float CosThetaL = sqrt(1.0 - SinThetaL * SinThetaL);
+  const float maxAverageScatteringValue = 0.99;
+
+	// Straight implementation of the dual scattering paper 
+  const vec3 af = min(vec3(maxAverageScatteringValue), AverageScattering.A_front);
+  const vec3 af2 = pow2(af);
+  const vec3 ab = min(vec3(maxAverageScatteringValue), AverageScattering.A_back);
+  const vec3 ab2 = pow2(ab);
+  const vec3 OneMinusAf2 = 1.0 - af2;
+
+  const vec3 A1 = ab * af2 / OneMinusAf2;
+  const vec3 A3 = ab * ab2 * af2 / (OneMinusAf2 * pow2(OneMinusAf2));
+  const vec3 Ab = A1 + A3;
+
+	// Add a min/max roughness for dual scattering based. This is a bit adhoc, but 
+	// * Min/lower bound helps with BSDF being too narrow and causing some fireflies, 
+	// * Max/upper bound helps against "too-flat" look due to dual scattering assuming directional lobe (vs. more radially uniform)
+  float roughness = clamp(bsdf.roughness, 0.18, 0.6);
+  const float Beta_R = pow2(roughness);
+  const float Beta_TT = pow2(roughness * 0.5);
+  const float Beta_TRT = pow2(roughness * 2);
+
+  const float Shift = 0.035;
+  // const float Shift = bsdf.shift;
+  const float Shift_R = -0.035 * 2.0;
+  const float Shift_TT = 0.035;
+  const float Shift_TRT = 0.035 * 4.0;
+
+	// Average density factor (This is the constant used in the original paper)
+  const float df = 0.7;
+  const float db = 0.7;
+
+	// Always shift the hair count by one to remove self-occlusion/shadow aliasing and have smoother transition
+	// This insure the the pow function always starts at 0 for front facing hair
+  const float HairCount = max(0.0, float(TransmittanceMask.hairCount) - 1.0);
+
+	// This is a coarse approximation of eq. 13. Normally, Beta_f should be weighted by the 'normalized' 
+	// R, TT, and TRT terms 
+  const vec3 af_weights = af / (af.r + af.g + af.b);
+  const vec3 Beta_f = vec3(dot(vec3(Beta_R, Beta_TT, Beta_TRT), af_weights));
+  const vec3 Beta_f2 = Beta_f * Beta_f;
+  const vec3 sigma_f2 = Beta_f2 * max(1.0, HairCount);
+
+  const float Theta_d = asin(SinThetaL) + asin(SinThetaV);
+  const float Theta_h = Theta_d * 0.5;
+
+	// Global scattering spread 'Sf'
+  vec3 Sf = vec3( g2(Theta_h, sigma_f2.r), g2(Theta_h, sigma_f2.g), g2(Theta_h, sigma_f2.b)) / PI;
+  const vec3 Tf = pow(AverageScattering.A_front, vec3(HairCount));
+
+	//Overall shift due to the various local scatteing event (all shift & roughnesss should vary with color)
+  const vec3 shift_f = vec3(dot(vec3(Shift_R, Shift_TT, Shift_TRT), af_weights));
+  const vec3 shift_b = shift_f;
+  const vec3 delta_b = shift_b * (1 - 2 * ab2 / pow2(1 - af2)) * shift_f * (2 * pow2(1 - af2) + 4 * af2 * ab2) / ((1 - af2) * (1 - af2) * (1 - af2));
+
+  const vec3 ab_weights = ab / (ab.r + ab.g + ab.b);
+  const vec3 Beta_b = vec3(dot(vec3(Beta_R, Beta_TT, Beta_TRT), ab_weights));
+  const vec3 Beta_b2 = Beta_b * Beta_b;
+
+  const vec3 sigma_b = (1 + db * af2) * (ab * sqrt(2 * Beta_f2 + Beta_b2) + ab * ab2 * sqrt(2 * Beta_f2 + Beta_b2)) / (ab + ab * ab2 * (2 * Beta_f + 3 * Beta_b));
+  const vec3 sigma_b2 = sigma_b * sigma_b;
+
+	// Local scattering Spread 'Sb'
+	// In Efficient Implementation of the Dual Scattering Model, the variance for back scattering is the sum of the front & back variances
+  vec3 Sb = vec3(g2(Theta_h - delta_b.r, sigma_f2.r + sigma_b2.r), g2(Theta_h - delta_b.g, sigma_f2.g + sigma_b2.g), g2(Theta_h - delta_b.b, sigma_f2.b + sigma_b2.b)) / PI;
+
+	// Different variant for managing sefl-occlusion issue for global scattering
+  const vec3 GlobalScattering = mix(vec3(1.0), Tf * Sf * df, saturate(HairCount));
+  const vec3 LocalScattering = 2.0 * Ab * Sb * db;
+
+	
+  bsdf.globalScattering = GlobalScattering;
+  bsdf.localScattering = LocalScattering;
+  bsdf.opaqueVisibility = TransmittanceMask.visibility;
+  return bsdf;
+  
+}
+
+HairAverageScattering sampleHairLUT(sampler3D LUTTexture, vec3 InAbsorption, float Roughness, float SinViewAngle) {
+  const vec3 RemappedAbsorption = fromLinearAbsorption(InAbsorption);
+  const vec2 LUTValue_R = textureLod(LUTTexture, vec3(saturate(abs(SinViewAngle)), saturate(Roughness), saturate(RemappedAbsorption.x)), 0.0).xy;
+  const vec2 LUTValue_G = textureLod(LUTTexture, vec3(saturate(abs(SinViewAngle)), saturate(Roughness), saturate(RemappedAbsorption.y)), 0.0).xy;
+  const vec2 LUTValue_B = textureLod(LUTTexture, vec3(saturate(abs(SinViewAngle)), saturate(Roughness), saturate(RemappedAbsorption.z)), 0.0).xy;
+
+  HairAverageScattering Output;
+  Output.A_front = vec3(LUTValue_R.x, LUTValue_G.x, LUTValue_B.x);
+  Output.A_back = vec3(LUTValue_R.y, LUTValue_G.y, LUTValue_B.y);
+  return Output;
+}
+
+EpicHairBSDF evalHairMultipleScattering(
+  const vec3 V,
+  const vec3 L,
+  const vec3 T,
+  HairTransmittanceMask TransmittanceMask,
+  sampler3D HairLUTTexture,
+  EpicHairBSDF bsdf
+) {
+	// Hack: Override the actual roughness, with a different value to achieve a specific look
+	// const float Roughness = GBuffer.CustomData.x > 0 ? GBuffer.CustomData.x : GBuffer.Roughness;
+	// const float Backlit = GBuffer.CustomData.z;
+
+	// Compute the transmittance based on precompute Hair transmittance LUT
+  const float SinLightAngle = dot(L, T);
+  const HairAverageScattering AverageScattering = sampleHairLUT(HairLUTTexture, bsdf.baseColor, bsdf.roughness, SinLightAngle);
+
+  return computeDualScatteringTerms(TransmittanceMask, AverageScattering, V, L, T, bsdf);
 
 }
