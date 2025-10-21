@@ -4,6 +4,8 @@ VULKAN_ENGINE_NAMESPACE_BEGIN
 using namespace Graphics;
 namespace Core {
 
+// #define HAIR_DISNEY
+
 void HairScatteringPass::create_hair_scattering_images() {
 
     // Attenuation textures
@@ -63,7 +65,7 @@ void HairScatteringPass::create_hair_scattering_images() {
     ResourceManager::HAIR_NG_TRT.create_view(config);
     ResourceManager::HAIR_NG_TRT.create_sampler(samplerConfig);
 
-    // GI Texture
+    // LUT Texture
     //--------------------------------------------------
 
     ImageConfig configGI     = {};
@@ -75,9 +77,10 @@ void HairScatteringPass::create_hair_scattering_images() {
     ResourceManager::HAIR_GI.create_view(configGI);
     ResourceManager::HAIR_GI.create_sampler(samplerConfig);
 
-    // Normalizing Buffer
-    m_normBuffer = m_device->create_buffer_VMA(
-        sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST, VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
+    // // Normalizing Buffer
+    // m_normBuffer = m_device->create_buffer_VMA(
+    //     sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST,
+    //     VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
 }
 void HairScatteringPass::setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies) {
     create_hair_scattering_images();
@@ -165,13 +168,13 @@ void HairScatteringPass::setup_shader_passes() {
 
     m_shaderPasses[1] = NPass;
 
-    ComputeShaderPass* GIPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_GI.glsl");
-    GIPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+    // ComputeShaderPass* GIPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_GI.glsl");
+    // GIPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
 
-    GIPass->build_shader_stages();
-    GIPass->build(m_descriptorPool);
+    // GIPass->build_shader_stages();
+    // GIPass->build(m_descriptorPool);
 
-    m_shaderPasses[2] = GIPass;
+    // m_shaderPasses[2] = GIPass;
 
     ComputeShaderPass* normPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_over_sphere.glsl");
     normPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
@@ -180,6 +183,12 @@ void HairScatteringPass::setup_shader_passes() {
     normPass->build(m_descriptorPool);
 
     m_shaderPasses[3] = normPass;
+
+    ComputeShaderPass* LUTPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_LUT.glsl");
+    LUTPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, false}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+    LUTPass->build_shader_stages();
+    LUTPass->build(m_descriptorPool);
+    m_shaderPasses[4] = LUTPass;
 }
 
 void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -213,6 +222,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
             ResourceManager::HAIR_GI, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
     }
 
+#ifdef HAIR_DISNEY
     /*
  PREPARE FOR SHADER WRITE
   */
@@ -274,13 +284,13 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                              ACCESS_SHADER_WRITE,
                              STAGE_FRAGMENT_SHADER,
                              STAGE_COMPUTE_SHADER);
-        cmd.pipeline_barrier(ResourceManager::HAIR_GI,
-                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                             LAYOUT_GENERAL,
-                             ACCESS_SHADER_READ,
-                             ACCESS_SHADER_WRITE,
-                             STAGE_FRAGMENT_SHADER,
-                             STAGE_COMPUTE_SHADER);
+        // cmd.pipeline_barrier(ResourceManager::HAIR_GI,
+        //                      LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        //                      LAYOUT_GENERAL,
+        //                      ACCESS_SHADER_READ,
+        //                      ACCESS_SHADER_WRITE,
+        //                      STAGE_FRAGMENT_SHADER,
+        //                      STAGE_COMPUTE_SHADER);
     }
 
     unsigned int mesh_idx = 0;
@@ -458,13 +468,15 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
                          ACCESS_SHADER_READ,
                          STAGE_COMPUTE_SHADER,
                          STAGE_FRAGMENT_SHADER);
-    cmd.pipeline_barrier(ResourceManager::HAIR_GI,
-                         LAYOUT_GENERAL,
-                         LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         ACCESS_SHADER_WRITE,
-                         ACCESS_SHADER_READ,
-                         STAGE_COMPUTE_SHADER,
-                         STAGE_FRAGMENT_SHADER);
+    // cmd.pipeline_barrier(ResourceManager::HAIR_GI,
+    //                      LAYOUT_GENERAL,
+    //                      LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    //                      ACCESS_SHADER_WRITE,
+    //                      ACCESS_SHADER_READ,
+    //                      STAGE_COMPUTE_SHADER,
+    //                      STAGE_FRAGMENT_SHADER);
+
+#endif
 }
 
 void HairScatteringPass::cleanup() {

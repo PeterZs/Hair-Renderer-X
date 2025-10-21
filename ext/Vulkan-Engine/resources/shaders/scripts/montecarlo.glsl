@@ -113,3 +113,19 @@ vec4 cosineSampleHemisphere(vec2 E, vec3 N)
 
     return vec4(H, PDF);
 }
+
+vec4 uniformSampleCone(vec2 E, float CosThetaMax)
+{
+    float Phi = 2.0 * PI * E.x;
+    float CosTheta = mix(CosThetaMax, 1.0, E.y); // GLSL equivalent of lerp()
+    float SinTheta = sqrt(1.0 - CosTheta * CosTheta);
+
+    vec3 L;
+    L.x = SinTheta * cos(Phi);
+    L.y = SinTheta * sin(Phi);
+    L.z = CosTheta;
+
+    float PDF = 1.0 / (2.0 * PI * (1.0 - CosThetaMax));
+
+    return vec4(L, PDF);
+}

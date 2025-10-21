@@ -42,7 +42,7 @@ void main() {
     const float SinAngle = saturate(float(PixelCoord.x + 0.5) / ThetaCount);
     const float Roughness = saturate(float(PixelCoord.y + 0.5) / RoughnessCount);
     const float Absorption = saturate(float(PixelCoord.z + 0.5) / AbsorptionCount);
-    const float CosAngle = sqrt(1 - SinAngle * SinAngle);
+    const float CosAngle = sqrt(1.0 - SinAngle * SinAngle);
 
     EpicHairBSDF bsdf;
     bsdf.specular = 0.5;
@@ -83,23 +83,23 @@ void main() {
 		// Sample a small solid around the view direction in order to average the small differences
 		// This allows to fight undersampling for low roughnesses
 		#if JITTER_VIEW == 1
-                const vec2 ViewU = Hammersley(ViewIt, LocalViewSampleCount, 0);
-                const vec4 ViewSample = UniformSampleCone(ViewU, MaxCosThetaRadius);
-                const vec3 JitteredV = mul(ViewSample, ToViewBasis);
-                const float ViewPdf = 1;
+                const vec2 ViewU = hammersley(ViewIt, LocalViewSampleCount, 0);
+                const vec4 ViewSample = uniformSampleCone(ViewU, MaxCosThetaRadius);
+                const vec3 JitteredV = ToViewBasis * ViewSample.xyz;
+                const float ViewPdf = 1.0;
 		#else
                 const vec3 JitteredV = V;
-                const float ViewPdf = 1;
+                const float ViewPdf = 1.0;
 		#endif
 
 		// Naive uniform sampling
 		// @todo: important sampling of the Hair BSDF. The integration is too noisy for low roughness with uniform sampling
                 const vec2 jitter = R2Sequence(SampleItX + SampleItY * LocalThetaSampleCount); // vec2(0.5f, 0.5f);
                 const vec2 u = (vec2(SampleItX, SampleItY) + jitter) / vec2(LocalThetaSampleCount, LocalPhiSampleCount);
-                const vec4 SampleDirection = UniformSampleSphere(u.yx);
+                const vec4 SampleDirection = uniformSampleSphere(u.yx);
                 const float SamplePdf = SampleDirection.w;
                 const vec3 L = SampleDirection.xyz;
-                const vec3 BSDFValue = HairShading(GBufferData, L, JitteredV, N, OpaqueVisibility, TransmittanceData, Backlit, Area, 0);
+                const vec3 BSDFValue = evalEpicHairBSDF(L, JitteredV, N, OpaqueVisibility ,bsdf, Backlit, Area, true, true, true, false);
 
 		// As in the original paper "Dual scattering approximation for fast multiple-scattering in hair", the average front/back scatter are cos-weighted (eq. 12). 
                 const float CosL = 1.;// abs(SampleDirection.x);
@@ -118,6 +118,6 @@ void main() {
             }
 
     const float HemisphereFactor = 0.5;
-    OutputColor[PixelCoord] = vec4(saturate(FrontHemisphereOutput / FrontHemisphereCount * HemisphereFactor), saturate(BackHemisphereOutput / BackHemisphereCount * HemisphereFactor), 0, 1);
+    imageStore(hairLUT, PixelCoord, vec4(saturate(FrontHemisphereOutput / FrontHemisphereCount * HemisphereFactor), saturate(BackHemisphereOutput / BackHemisphereCount * HemisphereFactor), 0.0, 1.0) );
 #endif
 }
