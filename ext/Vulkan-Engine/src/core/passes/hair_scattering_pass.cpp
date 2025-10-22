@@ -176,6 +176,12 @@ void HairScatteringPass::setup_shader_passes() {
 
     // m_shaderPasses[2] = GIPass;
 
+    ComputeShaderPass* LUTPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_LUT.glsl");
+    LUTPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
+    LUTPass->build_shader_stages();
+    LUTPass->build(m_descriptorPool);
+    m_shaderPasses[2] = LUTPass;
+
     ComputeShaderPass* normPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_over_sphere.glsl");
     normPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
@@ -183,12 +189,6 @@ void HairScatteringPass::setup_shader_passes() {
     normPass->build(m_descriptorPool);
 
     m_shaderPasses[3] = normPass;
-
-    ComputeShaderPass* LUTPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_LUT.glsl");
-    LUTPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, false}, {OBJECT_LAYOUT, false}, {OBJECT_TEXTURE_LAYOUT, false}};
-    LUTPass->build_shader_stages();
-    LUTPass->build(m_descriptorPool);
-    m_shaderPasses[4] = LUTPass;
 }
 
 void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {
@@ -202,6 +202,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
     */
     if (ResourceManager::HAIR_BACK_ATT.currentLayout == LAYOUT_UNDEFINED)
     {
+#ifdef HAIR_DISNEY
         cmd.pipeline_barrier(
             ResourceManager::HAIR_BACK_ATT, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
         cmd.pipeline_barrier(
@@ -218,8 +219,27 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
             ResourceManager::HAIR_FRONT_BETAS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
         cmd.pipeline_barrier(
             ResourceManager::HAIR_FRONT_SHIFTS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+#endif
+    }
+    // if (ResourceManager::HAIR_GI.currentLayout == LAYOUT_UNDEFINED)
+    {
         cmd.pipeline_barrier(
             ResourceManager::HAIR_GI, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
+
+        auto shaderPass = m_shaderPasses[2];
+        // Bind pipeline
+        cmd.bind_shaderpass(*shaderPass);
+        // GLOBAL LAYOUT BINDING
+        cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {}, BINDING_TYPE_COMPUTE);
+
+        // Dispatch the compute shader
+        const uint32_t WORK_GROUP_SIZE = 8;
+        uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
+        gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
+        cmd.dispatch_compute({gridSize, gridSize, 5});
+
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_GI, LAYOUT_GENERAL, LAYOUT_SHADER_READ_ONLY_OPTIMAL, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_FRAGMENT_SHADER );
     }
 
 #ifdef HAIR_DISNEY

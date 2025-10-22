@@ -8,11 +8,11 @@
 // Discontinuity at tangentZ.z == 0
 mat3 getTangentBasis(vec3 tangentZ) {
     const float sign = tangentZ.z >= 0 ? 1.0 : -1.0;
-    const float a = -rcp(sign + tangentZ.z);
+    const float a = -1.0 / (sign + tangentZ.z);
     const float b = tangentZ.x * tangentZ.y * a;
 
     vec3 tangentX = vec3(1 + sign * a * pow2(tangentZ.x), sign * b, -sign * tangentZ.x);
-    vec3 tangentY = vec3(b, Sign + a * pow2(tangentZ.y), -tangentZ.y);
+    vec3 tangentY = vec3(b, sign + a * pow2(tangentZ.y), -tangentZ.y);
 
     return mat3(tangentX, tangentY, tangentZ);//HLSL ins trnasposed
 }
@@ -47,9 +47,9 @@ vec2 R2Sequence(uint Index) {
     return fract(a * float(Index));
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// WARPING
-///////////////////////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+// /// WARPING
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // PDF = 1 / (4 * PI)
 vec4 uniformSampleSphere(vec2 E)

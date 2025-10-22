@@ -5,21 +5,19 @@
 #include montecarlo.glsl
 
 #define TILE_PIXEL_SIZE 8
-layout(local_size_x = TILE_PIXEL_SIZE, local_size_y = TILE_PIXEL_SIZE, local_size_z = TILE_PIXEL_SIZE) in;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
-layout(rgba32f, set = 0, binding = 0) uniform image3D hairLUT;
+layout(rgba32f, set = 0, binding = 9) uniform image3D hairLUT;
 
 #define JITTER_VIEW 0
-#define LUT_TYPE_DUALSCATTERING
 
 void main() {
 
-    uint AbsorptionCount;
-    uint RoughnessCount;
-    uint ThetaCount;
-    uint SampleCountScale;
-
-#ifdef LUT_TYPE_DUALSCATTERING
+    ivec3 lutSize = imageSize(hairLUT);
+    uint ThetaCount = uint(lutSize.x);
+    uint RoughnessCount = uint(lutSize.y);
+    uint AbsorptionCount = uint(lutSize.z);
+    uint SampleCountScale = 1u; 
 
 	// 3D LUT is organized as follow 
 	//
@@ -37,12 +35,13 @@ void main() {
 	// |
 	// V
 	// Y
-    const uint3 PixelCoord = gl_GlobalInvocationID.xyz;
+    const uvec3 PixelCoord = gl_GlobalInvocationID.xyz;
 
-    const float SinAngle = saturate(float(PixelCoord.x + 0.5) / ThetaCount);
-    const float Roughness = saturate(float(PixelCoord.y + 0.5) / RoughnessCount);
-    const float Absorption = saturate(float(PixelCoord.z + 0.5) / AbsorptionCount);
+    const float SinAngle = saturate((float(PixelCoord.x) + 0.5) / float(ThetaCount));
+    const float Roughness = saturate((float(PixelCoord.y) + 0.5) / float(RoughnessCount));
+    const float Absorption = saturate((float(PixelCoord.z) + 0.5) / float(AbsorptionCount));
     const float CosAngle = sqrt(1.0 - SinAngle * SinAngle);
+    // const float CosAngle   = sqrt(max(0.0, 1.0 - SinAngle * SinAngle));
 
     EpicHairBSDF bsdf;
     bsdf.specular = 0.5;
@@ -52,18 +51,20 @@ void main() {
     bsdf.useSeparableR = true;
     bsdf.clampBSDFValue = false;
     bsdf.useLegacyAbsorption = false;
+    bsdf.shift = 0.035;
+    bsdf.ior = 1.55;
 
     vec4 CustomData = vec4(0.0, 0.0, 1.0, 0.0); // Backlit
 
     float FrontHemisphereOutput = 0.0;
     float BackHemisphereOutput = 0.0;
 
-    uint FrontHemisphereCount = 0.0;
-    uint BackHemisphereCount = 0.0;
+    uint FrontHemisphereCount = 0u;
+    uint BackHemisphereCount = 0u;
 
-    const uint LocalThetaSampleCount = max(1, SampleCountScale * mix(128, 64, Roughness));
-    const uint LocalPhiSampleCount = max(1, SampleCountScale * mix(128, 32, Roughness));
-    const uint LocalViewSampleCount = max(1, SampleCountScale * 16);
+    uint LocalThetaSampleCount = max(1u, uint(round(float(SampleCountScale) * mix(128.0, 64.0, Roughness))));
+    uint LocalPhiSampleCount = max(1u, uint(round(float(SampleCountScale) * mix(128.0, 32.0, Roughness))));
+    uint LocalViewSampleCount = max(1u, uint(round(float(SampleCountScale) * 16.0)));
 
     const float Area = 0.0;			// This is used for faking area light sources by increasing the roughness of the surface. Disabled = 0.
     const float Backlit = 1.0; 		// This is used for suppressing the R & TT terms when when the lighting direction comes from behind. Disabled = 1.
@@ -78,8 +79,7 @@ void main() {
 	#if JITTER_VIEW == 1
     for(uint ViewIt = 0; ViewIt < LocalViewSampleCount; ++ViewIt)
 	#endif
-        for(uint SampleItY = 0; SampleItY < LocalPhiSampleCount; ++SampleItY) 
-        for(uint SampleItX = 0; SampleItX < LocalThetaSampleCount; ++SampleItX) {	
+        for(uint SampleItY = 0; SampleItY < LocalPhiSampleCount; ++SampleItY) for(uint SampleItX = 0; SampleItX < LocalThetaSampleCount; ++SampleItX) {	
 		// Sample a small solid around the view direction in order to average the small differences
 		// This allows to fight undersampling for low roughnesses
 		#if JITTER_VIEW == 1
@@ -95,19 +95,21 @@ void main() {
 		// Naive uniform sampling
 		// @todo: important sampling of the Hair BSDF. The integration is too noisy for low roughness with uniform sampling
                 const vec2 jitter = R2Sequence(SampleItX + SampleItY * LocalThetaSampleCount); // vec2(0.5f, 0.5f);
+                // const vec2 jitter =  vec2(0.5f, 0.5f);
                 const vec2 u = (vec2(SampleItX, SampleItY) + jitter) / vec2(LocalThetaSampleCount, LocalPhiSampleCount);
                 const vec4 SampleDirection = uniformSampleSphere(u.yx);
                 const float SamplePdf = SampleDirection.w;
                 const vec3 L = SampleDirection.xyz;
-                const vec3 BSDFValue = evalEpicHairBSDF(L, JitteredV, N, OpaqueVisibility ,bsdf, Backlit, Area, true, true, true, false);
+                const vec3 BSDFValue = evalEpicHairBSDF(L, JitteredV, N, OpaqueVisibility, bsdf, Backlit, Area, true, true, true, false);
+                // const vec3 BSDFValue = vec3(0.1);
 
 		// As in the original paper "Dual scattering approximation for fast multiple-scattering in hair", the average front/back scatter are cos-weighted (eq. 12). 
-                const float CosL = 1.;// abs(SampleDirection.x);
+                const float CosL = 1.0;// abs(SampleDirection.x);
 
 		// The view direction is aligned with the positive X Axis. This means:
 		// * the back hemisphere (R / TRT) is on the positive side of X
 		// * the front hemisphere (TT) is on the negative side of X
-                const bool bIsBackHemisphere = SampleDirection.x > 0;
+                const bool bIsBackHemisphere = SampleDirection.x > 0.0;
                 if(bIsBackHemisphere) {
                     BackHemisphereOutput += CosL * BSDFValue.x / SamplePdf;
                     ++BackHemisphereCount;
@@ -118,6 +120,8 @@ void main() {
             }
 
     const float HemisphereFactor = 0.5;
-    imageStore(hairLUT, PixelCoord, vec4(saturate(FrontHemisphereOutput / FrontHemisphereCount * HemisphereFactor), saturate(BackHemisphereOutput / BackHemisphereCount * HemisphereFactor), 0.0, 1.0) );
-#endif
+    vec4 outColor = vec4(saturate(FrontHemisphereOutput / float(FrontHemisphereCount) * HemisphereFactor), saturate(BackHemisphereOutput / float(BackHemisphereCount) * HemisphereFactor), 0.0, 1.0);
+
+    imageStore(hairLUT, ivec3(PixelCoord), outColor);
+    //  imageStore(hairLUT, ivec3(PixelCoord), vec4(1.0,0.0,0.0,0.0));
 }

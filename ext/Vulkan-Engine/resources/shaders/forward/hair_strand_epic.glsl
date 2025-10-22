@@ -314,6 +314,7 @@ void main() {
             float inBacklit = saturate(dot(-L, V));
 
             vec3 lighting = evalEpicHairBSDF(L, V, normalize(g_dir), directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5 ) * scene.lights[i].color * scene.lights[i].intensity;
+            // vec3 lighting = evalEpicHairBSDF(normalize(vec3(-1.0,0.0,0.0)), normalize(vec3(1.0,0.0,0.0)), normalize(vec3(0.0,0.0,1.0)), 1.0, bsdf, 1.0, 0.0, true, true, true, false);
             // vec3 lighting = vec3(0.0);
 
             color += lighting;
