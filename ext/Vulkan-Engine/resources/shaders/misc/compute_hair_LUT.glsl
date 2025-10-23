@@ -101,7 +101,6 @@ void main() {
                 const float SamplePdf = SampleDirection.w;
                 const vec3 L = SampleDirection.xyz;
                 const vec3 BSDFValue = evalEpicHairBSDF(L, JitteredV, N, OpaqueVisibility, bsdf, Backlit, Area, true, true, true, false);
-                // const vec3 BSDFValue = vec3(0.1);
 
 		// As in the original paper "Dual scattering approximation for fast multiple-scattering in hair", the average front/back scatter are cos-weighted (eq. 12). 
                 const float CosL = 1.0;// abs(SampleDirection.x);

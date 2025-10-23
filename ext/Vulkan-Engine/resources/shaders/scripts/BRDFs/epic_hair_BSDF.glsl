@@ -354,6 +354,7 @@ EpicHairBSDF evalHairMultipleScattering(
 	// Compute the transmittance based on precompute Hair transmittance LUT
   const float SinLightAngle = dot(L, T);
   const HairAverageScattering AverageScattering = sampleHairLUT(HairLUTTexture, bsdf.baseColor, bsdf.roughness, SinLightAngle);
+  // const HairAverageScattering AverageScattering;
 
   return computeDualScatteringTerms(TransmittanceMask, AverageScattering, V, L, T, bsdf);
 

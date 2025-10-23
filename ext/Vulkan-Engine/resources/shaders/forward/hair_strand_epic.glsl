@@ -135,9 +135,7 @@ layout(set = 0, binding = 2) uniform sampler2DArray shadowMap;
 layout(set = 0, binding = 4) uniform samplerCube irradianceMap;
 
 layout(set = 0, binding = 10) uniform sampler3D hairVoxels;
-layout(set = 0, binding = 11) uniform sampler2D hairNgTex;
-layout(set = 0, binding = 12) uniform sampler2D hairNgtTex;
-layout(set = 0, binding = 13) uniform sampler3D hairGITex;
+layout(set = 0, binding = 13) uniform sampler3D hairLUT;
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
     vec3 baseColor;
@@ -307,15 +305,18 @@ void main() {
                     shadow = computeHairShadow(scene.lights[i], i, shadowMap, 0.7, g_modelPos, spread, directFraction);
             }
 
-            nStrands = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz);
-
             vec3 L = normalize(scene.lights[i].position.xyz - g_pos);
             vec3 V = normalize(-g_pos);
+            vec3 T =  normalize(g_dir);
             float inBacklit = saturate(dot(-L, V));
+          
+            HairTransmittanceMask transMask;
+            transMask.hairCount = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz);
+            transMask.visibility = directFraction;
 
-            vec3 lighting = evalEpicHairBSDF(L, V, normalize(g_dir), directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5 ) * scene.lights[i].color * scene.lights[i].intensity;
-            // vec3 lighting = evalEpicHairBSDF(normalize(vec3(-1.0,0.0,0.0)), normalize(vec3(1.0,0.0,0.0)), normalize(vec3(0.0,0.0,1.0)), 1.0, bsdf, 1.0, 0.0, true, true, true, false);
-            // vec3 lighting = vec3(0.0);
+            bsdf = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
+            vec3 lighting = evalEpicHairBSDF(L, V,T, directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5 ) * scene.lights[i].color * scene.lights[i].intensity;
+            
 
             color += lighting;
         }
