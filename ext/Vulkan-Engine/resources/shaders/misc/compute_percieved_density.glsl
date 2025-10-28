@@ -6,11 +6,11 @@
 layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
 
-layout(set = 0, binding = 2, r32ui) uniform uimage3D densityVolume;
 layout(set= 0, binding = 3, rgba32f) uniform image3D encodedVolume; // SH0, SH1, SH2, SH3
 layout(std430, binding = 4) readonly buffer Directions {
     vec4 directions[];
 };
+layout(set = 0, binding =5) uniform sampler3D densityVolume;
 
 // // Scene bounds
 // layout(push_constant) uniform PushConstants {
@@ -21,12 +21,13 @@ layout(std430, binding = 4) readonly buffer Directions {
 
 float sampleDensity(vec3 pos, ivec3 dim) {
     vec3 uvw = (pos -  object.minCoord.xyz) / ( object.maxCoord.xyz -  object.minCoord.xyz);
-    ivec3 coord = ivec3(clamp(uvw * dim, vec3(0), vec3(dim - 1)));
-    return imageLoad(densityVolume, coord).r;
+    // ivec3 coord = ivec3(clamp(uvw * dim, vec3(0), vec3(dim - 1)));
+    // return imageLoad(densityVolume, coord).r;
+    return texture(densityVolume, uvw).r;
 }
 
 void main() {
-    const ivec3 RESOLUTION = imageSize(densityVolume);
+    const ivec3 RESOLUTION = textureSize(densityVolume, 0);
     const float STEP_SIZE = 1.0;
     const uint NUM_DIRS = 32;
 

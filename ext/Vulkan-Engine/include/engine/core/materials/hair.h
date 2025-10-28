@@ -259,6 +259,8 @@ class HairEpicMaterial : public IMaterial
     bool m_clampBSDFValue      = false;
     bool m_useScatter          = false;
 
+    Geometry* m_skullGeometry = nullptr;
+
     std::unordered_map<int, ITexture*> m_textures;
 
     std::unordered_map<int, bool> m_textureBindingState;
@@ -423,6 +425,12 @@ class HairEpicMaterial : public IMaterial
         m_useScatter = useScatter;
         m_isDirty    = true;
     }
+    void set_skull(Geometry* skullGeometry) {
+        m_skullGeometry = skullGeometry;
+    };
+    Geometry* get_skull() {
+        return m_skullGeometry;
+    };
 };
 
 } // namespace Core

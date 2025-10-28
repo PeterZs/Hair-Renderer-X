@@ -11,7 +11,7 @@ void HairVoxelizationPass::create_voxelization_image() {
 
     ImageConfig config                   = {};
     config.viewType                      = TEXTURE_3D;
-    config.format                        = R_32_UINT;
+    config.format                        = SR_32F;
     config.usageFlags                    = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
     config.mipLevels                     = 1;
     ResourceManager::HAIR_DENSITY_VOLUME = m_device->create_image({m_imageExtent.width, m_imageExtent.width, m_imageExtent.width}, config, false);
@@ -104,12 +104,19 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
     LayoutBinding voxelBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_FRAGMENT, 2);
     LayoutBinding shBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 3);
     LayoutBinding dirBinding(UNIFORM_STORAGE_BUFFER, SHADER_STAGE_COMPUTE, 4);
-    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {camBufferBinding, sceneBufferBinding, voxelBinding, shBinding, dirBinding});
+    LayoutBinding voxelSamplerBindng(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE, 5);
+    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {camBufferBinding, sceneBufferBinding, voxelBinding, shBinding, dirBinding, voxelSamplerBindng});
 
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 0);
     LayoutBinding materialBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 1);
     m_descriptorPool.set_layout(OBJECT_LAYOUT, {objectBufferBinding, materialBufferBinding});
+
+    // BINDLESS SETs
+    LayoutBinding bindlessVBOs(UNIFORM_STORAGE_BUFFER, SHADER_STAGE_COMPUTE, 0, ENGINE_MAX_OBJECTS);
+    LayoutBinding bindlessIBOs(UNIFORM_STORAGE_BUFFER, SHADER_STAGE_COMPUTE, 1, ENGINE_MAX_OBJECTS);
+    m_descriptorPool.set_layout(
+        2, {bindlessVBOs, bindlessIBOs}, 0, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
 
     for (size_t i = 0; i < frames.size(); i++)
     {
@@ -129,6 +136,7 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
         m_descriptorPool.set_descriptor_write(
             &ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 3, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&m_directionsBuffer, BUFFER_SIZE, 0, &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 4);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 5);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -189,6 +197,15 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                              STAGE_TOP_OF_PIPE,
                              STAGE_FRAGMENT_SHADER);
     } else
+    {
+
+        cmd.pipeline_barrier(ResourceManager::HAIR_DENSITY_VOLUME,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_COMPUTE_SHADER,
+                             STAGE_FRAGMENT_SHADER);
         cmd.pipeline_barrier(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME,
                              LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                              LAYOUT_GENERAL,
@@ -196,6 +213,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                              ACCESS_SHADER_WRITE,
                              STAGE_FRAGMENT_SHADER,
                              STAGE_COMPUTE_SHADER);
+    }
     /*
     CLEAR IMAGES
     */
@@ -220,7 +238,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                     m->get_geometry()) // Check if is inside frustrum
                 {
                     auto mat = m->get_material();
-                    if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE)
+                    if (mat->get_type() == Core::IMaterial::Type::HAIR_STR_TYPE || mat->get_type() == Core::IMaterial::Type::HAIR_STR_EPIC_TYPE)
                     {
 
                         ShaderPass* shaderPass = m_shaderPasses[0];
@@ -242,6 +260,14 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                         /*
                         DISPATCH COMPUTE FOR POPULATING FINAL PERCEIVED DENSITY IMAGE
                         */
+
+                        cmd.pipeline_barrier(ResourceManager::HAIR_DENSITY_VOLUME,
+                                             LAYOUT_GENERAL,
+                                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                             ACCESS_SHADER_WRITE,
+                                             ACCESS_SHADER_READ,
+                                             STAGE_FRAGMENT_SHADER,
+                                             STAGE_COMPUTE_SHADER);
 
                         ShaderPass* shPass = m_shaderPasses[1];
                         cmd.bind_shaderpass(*shPass);

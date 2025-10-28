@@ -39,6 +39,7 @@ void main() {
 
 #shader fragment
 #version 460
+#extension GL_EXT_shader_atomic_float  : require
 #include object.glsl
 #include utils.glsl
 
@@ -46,7 +47,7 @@ void main() {
 layout(location = 0) in vec3 _pos;
 
 
-layout(set = 0,  binding =  2, r32ui) uniform uimage3D               voxelImage;
+layout(set = 0,  binding =  2, r32f) uniform image3D               voxelImage;
 
 layout(set = 1, binding = 1) uniform MaterialUniforms {
     vec4 slot1; 
@@ -71,7 +72,7 @@ void main() {
 
     ivec3 voxelPos = worldSpaceToVoxelSpace(_pos);
 
-    uint ocupancy = 1;
+    float ocupancy = 1.0;
     imageAtomicAdd(voxelImage, voxelPos, ocupancy);
 
 }

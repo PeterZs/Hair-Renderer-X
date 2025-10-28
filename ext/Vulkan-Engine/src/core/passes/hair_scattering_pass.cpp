@@ -78,10 +78,10 @@ void HairScatteringPass::create_hair_scattering_images() {
     ResourceManager::HAIR_GI.create_sampler(samplerConfig);
 
     // // Normalizing Buffer
-    // m_normBuffer = m_device->create_buffer_VMA(
-    //     sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST,
-    //     VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
-}
+//     m_normBuffer = m_device->create_buffer_VMA(
+//         sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST,
+//         VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
+ }
 void HairScatteringPass::setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies) {
     create_hair_scattering_images();
 }
@@ -134,7 +134,7 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_FRONT_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 7, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_BACK_BETAS, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 8, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_GI, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 9, UNIFORM_STORAGE_IMAGE);
-        m_descriptorPool.set_descriptor_write(&m_normBuffer, sizeof(Vec4), 0.0f, &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 10);
+        // m_descriptorPool.set_descriptor_write(&m_normBuffer, sizeof(Vec4), 0.0f, &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 10);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -221,7 +221,7 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
             ResourceManager::HAIR_FRONT_SHIFTS, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);
 #endif
     }
-    // if (ResourceManager::HAIR_GI.currentLayout == LAYOUT_UNDEFINED)
+    if (ResourceManager::HAIR_GI.currentLayout == LAYOUT_UNDEFINED)
     {
         cmd.pipeline_barrier(
             ResourceManager::HAIR_GI, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_COMPUTE_SHADER);

@@ -146,7 +146,7 @@ void VarianceShadowPass::render(Graphics::Frame& currentFrame, Scene* const scen
                     Geometry*  g   = m->get_geometry(i);
                     IMaterial* mat = m->get_material(g->get_material_ID());
 
-                    ShaderPass* shaderPass = mat->get_type() != IMaterial::Type::HAIR_STR_TYPE ? m_shaderPasses[0] : m_shaderPasses[1];
+                    ShaderPass* shaderPass = mat->get_type() != IMaterial::Type::HAIR_STR_EPIC_TYPE ? m_shaderPasses[0] : m_shaderPasses[1];
 
                     cmd.set_depth_test_enable(mat->get_parameters().depthTest);
                     cmd.set_depth_write_enable(mat->get_parameters().depthWrite);

@@ -70,20 +70,20 @@ void HairViewer::setup() {
 #ifdef USE_NEURAL_MODELS
     load_neural_avatar(
         RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
-    load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
-                       RESOURCES_PATH "models/neural_head_ALVARO.ply",
-                       "Alvaro",
-                       {0.8, 0.2, 4.0},
-                       {-5.5f, 0.1f, -0.4f},
-                       -35.0f);
-    load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONO.ply",
-                       RESOURCES_PATH "models/neural_head_TONO.ply",
-                       "Antonio",
-                       {0.4, 0.2, 24.0},
-                       //    {5.5f, 0.0f, 0.0f},
-                       {0.0f, 0.0f, 0.0f},
-                       -320.0f,
-                       false);
+    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
+    //                    RESOURCES_PATH "models/neural_head_ALVARO.ply",
+    //                    "Alvaro",
+    //                    {0.8, 0.2, 4.0},
+    //                    {-5.5f, 0.1f, -0.4f},
+    //                    -35.0f);
+    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONO.ply",
+    //                    RESOURCES_PATH "models/neural_head_TONO.ply",
+    //                    "Antonio",
+    //                    {0.4, 0.2, 24.0},
+    //                    //    {5.5f, 0.0f, 0.0f},
+    //                    {0.0f, 0.0f, 0.0f},
+    //                    -320.0f,
+    //                    false);
     //    {9, 6, 3}
 #else
     Mesh* hair = new Mesh();
@@ -193,7 +193,7 @@ void HairViewer::load_neural_avatar(const char* hairFile,
     std::thread loadThread1(hair_loaders::load_neural_hair, hair, hairFile, nullptr, true, false, false, false);
     loadThread1.detach();
 
-    HairMaterial* hmat = new HairMaterial(hairColor.r, hairColor.g);
+    HairEpicMaterial* hmat = new HairEpicMaterial();
     hair->push_material(hmat);
     hair->set_name(std::string(objName) + " hair");
 

@@ -281,6 +281,7 @@ VkDevice Booter::create_logical_device(std::unordered_map<QueueType, VkQueue>& q
 
         atomicFloatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
         atomicFloatFeatures.shaderBufferFloat32AtomicAdd = true;
+        atomicFloatFeatures.shaderImageFloat32AtomicAdd = true;
         atomicFloatFeatures.pNext = &descriptorIndexingFeatures;
 
         // Finally, attach the descriptorIndexingFeatures to the physicalDeviceFeatures2

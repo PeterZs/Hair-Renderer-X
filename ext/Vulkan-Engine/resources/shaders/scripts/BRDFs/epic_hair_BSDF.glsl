@@ -104,12 +104,6 @@ vec3 evalKajiyaKayDiffuseAttenuation(vec3 color, float metallic, vec3 L, vec3 V,
   return sqrt(abs(color)) * diffuseScatter * scatterTint;
 }
 
-vec3 evalMultipleScattering(
-  const EpicHairBSDF bsdf,
-  const vec3 Fs
-) {
-  return bsdf.globalScattering * (Fs + bsdf.localScattering) * bsdf.opaqueVisibility;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Hair BSDF
@@ -227,8 +221,9 @@ vec3 evalEpicHairBSDF(vec3 L, vec3 V, vec3 N, float shadow, EpicHairBSDF bsdf, f
   }
 
   if(scatter) {
-    S = evalMultipleScattering(bsdf, S);
-    S += evalKajiyaKayDiffuseAttenuation(bsdf.baseColor, bsdf.metallic, L, V, N, shadow);
+    S = bsdf.globalScattering * (S + bsdf.localScattering) * bsdf.opaqueVisibility;
+    //Fallback ...
+    S += evalKajiyaKayDiffuseAttenuation(bsdf.baseColor, bsdf.metallic, L, V, N, 1.0 - bsdf.opaqueVisibility);
   }
 
   S = -min(-S, 0.0);
@@ -315,9 +310,10 @@ EpicHairBSDF computeDualScatteringTerms(
 	// In Efficient Implementation of the Dual Scattering Model, the variance for back scattering is the sum of the front & back variances
   vec3 Sb = vec3(g2(Theta_h - delta_b.r, sigma_f2.r + sigma_b2.r), g2(Theta_h - delta_b.g, sigma_f2.g + sigma_b2.g), g2(Theta_h - delta_b.b, sigma_f2.b + sigma_b2.b)) / PI;
 
+  const vec3 LocalScattering = 2.0 * Ab * Sb * db;
 	// Different variant for managing sefl-occlusion issue for global scattering
   const vec3 GlobalScattering = mix(vec3(1.0), Tf * Sf * df, saturate(HairCount));
-  const vec3 LocalScattering = 2.0 * Ab * Sb * db;
+  // const vec3 GlobalScattering =  (Tf - vec3(TransmittanceMask.visibility)) * df * ( PI * df * LocalScattering);
 
 	
   bsdf.globalScattering = GlobalScattering;

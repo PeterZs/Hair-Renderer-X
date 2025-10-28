@@ -196,10 +196,11 @@ float getNumberOfStrands(vec3 worldPos, vec3 lightWorldPos) {
     vec3 uvw = (worldPos - object.minCoord.xyz) / (object.maxCoord.xyz - object.minCoord.xyz);
     uvw = clamp(uvw, 0.0, 0.9999);
 
-    ivec3 coord = ivec3(uvw * vec3(textureSize(hairVoxels, 0)));
 
     // Fetch SH L1 and decode
-    vec4 SHL1 = texelFetch(hairVoxels, coord, 0);
+    // ivec3 coord = ivec3(uvw * vec3(textureSize(hairVoxels, 0)));
+    // vec4 SHL1 = texelFetch(hairVoxels, coord, 0);
+    vec4 SHL1 = texture(hairVoxels, uvw, 0);
 
     return decodeScalarFromSHL1(SHL1, dir);
 }
@@ -256,8 +257,6 @@ vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap
 }
 
 void main() {
-    //Number of traversed strands
-    float nStrands;
 
     //BSDF setup ............................................................
     // bsdf.baseColor = material.baseColor;
@@ -310,20 +309,23 @@ void main() {
             vec3 T =  normalize(g_dir);
             float inBacklit = saturate(dot(-L, V));
           
+            //Number of traversed strands
             HairTransmittanceMask transMask;
             transMask.hairCount = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz);
             transMask.visibility = directFraction;
+            // transMask.hairCount = (1.0 - directFraction) * 2.0;
 
             bsdf = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
             vec3 lighting = evalEpicHairBSDF(L, V,T, directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5 ) * scene.lights[i].color * scene.lights[i].intensity;
             
 
             color += lighting;
+            // color = vec3(directFraction);
         }
     }
 
     // vec3 n1 = cross(g_modelDir, cross(camera.position.xyz, g_modelDir));
-    vec3 fakeNormal = normalize(g_modelPos - object.volumeCenter);
+    vec3 fakeNormal = normalize( g_modelPos - object.volumeCenter);
     // vec3 fakeNormal = mix(n1,n2,0.5);
 
     //AMBIENT COMPONENT ..........................................................

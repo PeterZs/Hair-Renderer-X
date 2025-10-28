@@ -36,8 +36,7 @@ struct LayoutBinding {
     VkDescriptorSetLayoutBinding handle{};
 
     LayoutBinding(UniformDataType type, ShaderStageFlags stageFlags, uint32_t binding, uint32_t descriptorCount = 1U) {
-        handle = Init::descriptorset_layout_binding(
-            Translator::get(type), Translator::get(stageFlags), binding, descriptorCount);
+        handle = Init::descriptorset_layout_binding(Translator::get(type), Translator::get(stageFlags), binding, descriptorCount);
     }
 };
 
@@ -48,7 +47,8 @@ struct DescriptorPool {
 
     void set_layout(uint32_t                         layoutSetIndex,
                     std::vector<LayoutBinding>       bindings,
-                    VkDescriptorSetLayoutCreateFlags flags = 0);
+                    VkDescriptorSetLayoutCreateFlags flags    = 0,
+                    VkDescriptorBindingFlagsEXT      extFlags = 0);
 
     inline VkDescriptorSetLayout get_layout(uint32_t layoutSetIndex) {
         return layouts[layoutSetIndex];
@@ -64,7 +64,8 @@ struct DescriptorPool {
                               size_t          readOffset,
                               DescriptorSet*  descriptor,
                               UniformDataType type,
-                              uint32_t        binding);
+                              uint32_t        binding,
+                              uint32_t        bindlessSlot = 0);
 
     /*
     Set writes for Images
@@ -73,7 +74,8 @@ struct DescriptorPool {
                               ImageLayout     layout,
                               DescriptorSet*  descriptor,
                               uint32_t        binding,
-                              UniformDataType type = UNIFORM_COMBINED_IMAGE_SAMPLER);
+                              UniformDataType type         = UNIFORM_COMBINED_IMAGE_SAMPLER,
+                              uint32_t        bindlessSlot = 0);
     /*
     Set writes for Image Array
     */
@@ -81,7 +83,8 @@ struct DescriptorPool {
                               ImageLayout         layout,
                               DescriptorSet*      descriptor,
                               uint32_t            binding,
-                              UniformDataType     type = UNIFORM_COMBINED_IMAGE_SAMPLER);
+                              UniformDataType     type         = UNIFORM_COMBINED_IMAGE_SAMPLER,
+                              uint32_t            bindlessSlot = 0);
     /*
     Set writes for Acceleration Structures
     */

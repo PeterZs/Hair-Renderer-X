@@ -6,7 +6,8 @@ namespace Graphics {
 
 void DescriptorPool::set_layout(uint32_t                         layoutSetIndex,
                                 std::vector<LayoutBinding>       bindings,
-                                VkDescriptorSetLayoutCreateFlags flags) {
+                                VkDescriptorSetLayoutCreateFlags flags,
+                                VkDescriptorBindingFlagsEXT      extFlags) {
 
     std::vector<VkDescriptorSetLayoutBinding> bindingHandles;
     bindingHandles.resize(bindings.size());
@@ -15,13 +16,18 @@ void DescriptorPool::set_layout(uint32_t                         layoutSetIndex,
         bindingHandles[i] = bindings[i].handle;
     }
 
+    VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo = {};
+    bindingFlagsInfo.sType                                          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+    bindingFlagsInfo.bindingCount                                   = static_cast<uint32_t>(bindingHandles.size());
+    bindingFlagsInfo.pBindingFlags                                  = &extFlags;
+
     VkDescriptorSetLayout           layout;
     VkDescriptorSetLayoutCreateInfo setinfo = {};
     setinfo.bindingCount                    = static_cast<uint32_t>(bindingHandles.size());
     setinfo.flags                           = flags;
-    setinfo.pNext                           = nullptr;
     setinfo.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     setinfo.pBindings                       = bindingHandles.data();
+    setinfo.pNext                           = extFlags != 0 ? &bindingFlagsInfo : nullptr;
 
     VK_CHECK(vkCreateDescriptorSetLayout(device, &setinfo, nullptr, &layout));
 
@@ -46,14 +52,14 @@ void DescriptorPool::set_descriptor_write(Buffer*         buffer,
                                           size_t          readOffset,
                                           DescriptorSet*  descriptor,
                                           UniformDataType type,
-                                          uint32_t        binding) {
+                                          uint32_t        binding,
+                                          uint32_t        bindlessSlot) {
     VkDescriptorBufferInfo info;
     info.buffer = buffer->handle;
     info.offset = static_cast<VkDeviceSize>(readOffset);
     info.range  = static_cast<VkDeviceSize>(dataSize);
 
-    VkWriteDescriptorSet writeSetting =
-        Init::write_descriptor_buffer(Translator::get(type), descriptor->handle, &info, binding);
+    VkWriteDescriptorSet writeSetting = Init::write_descriptor_buffer(Translator::get(type), descriptor->handle, &info, bindlessSlot, binding);
 
     descriptor->bindings += 1;
     descriptor->binded_buffers.push_back(buffer);
@@ -65,15 +71,15 @@ void DescriptorPool::set_descriptor_write(Image*          image,
                                           ImageLayout     layout,
                                           DescriptorSet*  descriptor,
                                           uint32_t        binding,
-                                          UniformDataType type) {
+                                          UniformDataType type,
+                                          uint32_t        bindlessSlot) {
 
     VkDescriptorImageInfo imageBufferInfo;
     imageBufferInfo.sampler     = image->sampler;
     imageBufferInfo.imageView   = image->view;
     imageBufferInfo.imageLayout = Translator::get(layout);
 
-    VkWriteDescriptorSet texture1 =
-        Init::write_descriptor_image(Translator::get(type), descriptor->handle, &imageBufferInfo, 1, binding);
+    VkWriteDescriptorSet texture1 = Init::write_descriptor_image(Translator::get(type), descriptor->handle, &imageBufferInfo, 1, bindlessSlot, binding);
 
     descriptor->bindings += 1;
 
@@ -83,7 +89,8 @@ void DescriptorPool::set_descriptor_write(std::vector<Image>& images,
                                           ImageLayout         layout,
                                           DescriptorSet*      descriptor,
                                           uint32_t            binding,
-                                          UniformDataType     type) {
+                                          UniformDataType     type,
+                                          uint32_t            bindlessSlot) {
 
     std::vector<VkDescriptorImageInfo> descriptorImageInfos(images.size());
     for (size_t i = 0; i < images.size(); i++)
@@ -93,8 +100,8 @@ void DescriptorPool::set_descriptor_write(std::vector<Image>& images,
         descriptorImageInfos[i].imageLayout = Translator::get(layout);
     }
 
-    VkWriteDescriptorSet imageArray = Init::write_descriptor_image(
-        Translator::get(type), descriptor->handle, descriptorImageInfos.data(), images.size(), binding);
+    VkWriteDescriptorSet imageArray =
+        Init::write_descriptor_image(Translator::get(type), descriptor->handle, descriptorImageInfos.data(), images.size(), bindlessSlot, binding);
 
     descriptor->bindings += 1;
 
@@ -102,10 +109,9 @@ void DescriptorPool::set_descriptor_write(std::vector<Image>& images,
 }
 void DescriptorPool::set_descriptor_write(TLAS* accel, DescriptorSet* descriptor, uint32_t binding) {
 
-    VkWriteDescriptorSetAccelerationStructureKHR descriptorAccelerationStructureInfo =
-        Init::write_descriptor_set_acceleration_structure();
-    descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
-    descriptorAccelerationStructureInfo.pAccelerationStructures    = &accel->handle;
+    VkWriteDescriptorSetAccelerationStructureKHR descriptorAccelerationStructureInfo = Init::write_descriptor_set_acceleration_structure();
+    descriptorAccelerationStructureInfo.accelerationStructureCount                   = 1;
+    descriptorAccelerationStructureInfo.pAccelerationStructures                      = &accel->handle;
 
     VkWriteDescriptorSet accelerationStructureWrite{};
     accelerationStructureWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
