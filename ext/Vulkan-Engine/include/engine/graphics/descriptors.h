@@ -16,19 +16,22 @@
 #include <engine/graphics/utilities/initializers.h>
 #include <engine/graphics/utilities/translator.h>
 #include <unordered_map>
+#include <variant>
 
 VULKAN_ENGINE_NAMESPACE_BEGIN
 
 namespace Graphics {
 
+using BoundResource = std::variant<VkImageView, VkBuffer, VkAccelerationStructureKHR>;
+
 struct DescriptorSet {
     VkDescriptorSet handle{};
 
-    std::vector<Buffer*> binded_buffers;
-    uint32_t             layoutID;
-    uint32_t             bindings;
-    bool                 isDynamic;
-    bool                 allocated{false};
+    uint32_t layoutID;
+    uint32_t bindings;
+
+    std::unordered_map<uint32_t, BoundResource> boundSlots;
+    bool                                        allocated = false;
 };
 
 struct LayoutBinding {
@@ -45,16 +48,17 @@ struct DescriptorPool {
     VkDevice                                            device = VK_NULL_HANDLE;
     std::unordered_map<uint32_t, VkDescriptorSetLayout> layouts;
 
-    void set_layout(uint32_t                         layoutSetIndex,
-                    std::vector<LayoutBinding>       bindings,
-                    VkDescriptorSetLayoutCreateFlags flags    = 0,
-                    VkDescriptorBindingFlagsEXT      extFlags = 0);
+    void set_layout(uint32_t                                 layoutSetIndex,
+                    std::vector<LayoutBinding>               bindings,
+                    VkDescriptorSetLayoutCreateFlags         flags    = 0,
+                    std::vector<VkDescriptorBindingFlagsEXT> extFlags = {});
 
     inline VkDescriptorSetLayout get_layout(uint32_t layoutSetIndex) {
         return layouts[layoutSetIndex];
     }
 
     void allocate_descriptor_set(uint32_t layoutSetIndex, DescriptorSet* descriptor);
+    void allocate_varaible_descriptor_set(uint32_t layoutSetIndex, DescriptorSet* descriptor, uint32_t size);
 
     /*
     Set writes for Uniform Buffers

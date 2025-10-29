@@ -26,11 +26,13 @@ struct VertexArrays {
     Buffer   ibo         = {};
     uint32_t indexCount  = 0;
 
+    Buffer   positionBuffer;
+    uint32_t segmentsCount = 0;
     /*
     Optional, if the geometry need a proxy axis-aligned voxelized volume
     */
-    Buffer   voxelBuffer   = {};
-    uint32_t voxelCount    = 0;
+    Buffer   voxelBuffer = {};
+    uint32_t voxelCount  = 0;
 };
 typedef VertexArrays VAO;
 /*
@@ -50,11 +52,8 @@ struct Vertex {
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         return bindingDescription;
     }
-    static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions(bool position = true,
-                                                                                   bool normal   = true,
-                                                                                   bool tangent  = true,
-                                                                                   bool texCoord = true,
-                                                                                   bool color    = true) {
+    static std::vector<VkVertexInputAttributeDescription>
+    getAttributeDescriptions(bool position = true, bool normal = true, bool tangent = true, bool texCoord = true, bool color = true) {
         std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
         if (position)
         {
@@ -106,8 +105,7 @@ struct Vertex {
     }
 
     bool operator==(const Vertex& other) const {
-        return pos == other.pos && normal == other.normal && tangent == other.tangent && texCoord == other.texCoord &&
-               color == other.color;
+        return pos == other.pos && normal == other.normal && tangent == other.tangent && texCoord == other.texCoord && color == other.color;
     }
 
     bool operator!=(const Vertex& other) const {

@@ -77,7 +77,7 @@ void ResourceManager::init_basic_resources(Graphics::Device* const device) {
         TextureSettings settings{};
         settings.useMipmaps = false;
         settings.adressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
-        HAIR_GI_FALLBACK = new Texture(settings);
+        HAIR_GI_FALLBACK    = new Texture(settings);
 
         Tools::Loaders::load_3D_texture(HAIR_GI_FALLBACK, ENGINE_RESOURCES_PATH "textures/LUTs/blonde/GI.png");
         HAIR_GI_FALLBACK->set_format(RGBA_8U);
@@ -356,7 +356,15 @@ void ResourceManager::upload_geometry_data(Graphics::Device* const device, Core:
         rd->vertexCount                     = gd.vertexData.size();
         rd->voxelCount                      = gd.voxelData.size();
 
-        device->upload_vertex_arrays(*rd, vboSize, gd.vertexData.data(), iboSize, gd.vertexIndex.data(), voxelSize, gd.voxelData.data());
+        std::vector<Vec3> positions;
+        positions.reserve(gd.vertexData.size());
+
+        for (const auto& v : gd.vertexData)
+            positions.push_back(v.pos);
+        size_t positionsSize = sizeof(Vec3) * positions.size();
+
+        device->upload_vertex_arrays(
+            *rd, vboSize, gd.vertexData.data(), iboSize, gd.vertexIndex.data(), positionsSize, positions.data(), voxelSize, gd.voxelData.data());
     }
     /*
     ACCELERATION STRUCTURE
@@ -377,6 +385,7 @@ void ResourceManager::destroy_geometry_data(Core::Geometry* const g) {
             rd->ibo.cleanup();
         if (rd->voxelCount > 0)
             rd->voxelBuffer.cleanup();
+        rd->positionBuffer.cleanup();
 
         rd->loadedOnGPU = false;
         get_BLAS(g)->cleanup();

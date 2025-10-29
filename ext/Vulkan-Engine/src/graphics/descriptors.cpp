@@ -4,10 +4,10 @@ VULKAN_ENGINE_NAMESPACE_BEGIN
 
 namespace Graphics {
 
-void DescriptorPool::set_layout(uint32_t                         layoutSetIndex,
-                                std::vector<LayoutBinding>       bindings,
-                                VkDescriptorSetLayoutCreateFlags flags,
-                                VkDescriptorBindingFlagsEXT      extFlags) {
+void DescriptorPool::set_layout(uint32_t                                 layoutSetIndex,
+                                std::vector<LayoutBinding>               bindings,
+                                VkDescriptorSetLayoutCreateFlags         flags,
+                                std::vector<VkDescriptorBindingFlagsEXT> extFlags) {
 
     std::vector<VkDescriptorSetLayoutBinding> bindingHandles;
     bindingHandles.resize(bindings.size());
@@ -19,7 +19,7 @@ void DescriptorPool::set_layout(uint32_t                         layoutSetIndex,
     VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlagsInfo = {};
     bindingFlagsInfo.sType                                          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
     bindingFlagsInfo.bindingCount                                   = static_cast<uint32_t>(bindingHandles.size());
-    bindingFlagsInfo.pBindingFlags                                  = &extFlags;
+    bindingFlagsInfo.pBindingFlags                                  = extFlags.data();
 
     VkDescriptorSetLayout           layout;
     VkDescriptorSetLayoutCreateInfo setinfo = {};
@@ -27,7 +27,7 @@ void DescriptorPool::set_layout(uint32_t                         layoutSetIndex,
     setinfo.flags                           = flags;
     setinfo.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     setinfo.pBindings                       = bindingHandles.data();
-    setinfo.pNext                           = extFlags != 0 ? &bindingFlagsInfo : nullptr;
+    setinfo.pNext                           = extFlags.size() > 0 ? &bindingFlagsInfo : nullptr;
 
     VK_CHECK(vkCreateDescriptorSetLayout(device, &setinfo, nullptr, &layout));
 
@@ -47,6 +47,26 @@ void DescriptorPool::allocate_descriptor_set(uint32_t layoutSetIndex, Descriptor
 
     descriptor->allocated = true;
 }
+void DescriptorPool::allocate_varaible_descriptor_set(uint32_t layoutSetIndex, DescriptorSet* descriptor, uint32_t size) {
+
+    VkDescriptorSetVariableDescriptorCountAllocateInfo countInfo = {};
+    countInfo.sType                                              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+    countInfo.descriptorSetCount                                 = 1;
+    countInfo.pDescriptorCounts                                  = &size;
+
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.pNext                       = &countInfo;
+    allocInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool              = handle;
+    allocInfo.descriptorSetCount          = 1;
+    allocInfo.pSetLayouts                 = &layouts[layoutSetIndex];
+
+    descriptor->layoutID = layoutSetIndex;
+
+    VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptor->handle));
+
+    // descriptor->isArrayed = true;
+}
 void DescriptorPool::set_descriptor_write(Buffer*         buffer,
                                           size_t          dataSize,
                                           size_t          readOffset,
@@ -54,6 +74,18 @@ void DescriptorPool::set_descriptor_write(Buffer*         buffer,
                                           UniformDataType type,
                                           uint32_t        binding,
                                           uint32_t        bindlessSlot) {
+
+    // auto it = descriptor->boundSlots.find(bindlessSlot);
+    // if (it !=  descriptor->boundSlots.end() && std::holds_alternative<VkBuffer>(it->second) && std::get<VkBuffer>(it->second) == buffer->handle)
+    // {
+    //     // Image in array is already bound — skip update
+    //     return;
+    // } else
+    // {
+    //     // Track resource
+    //    descriptor->boundSlots[bindlessSlot] = buffer->handle;
+    // }
+
     VkDescriptorBufferInfo info;
     info.buffer = buffer->handle;
     info.offset = static_cast<VkDeviceSize>(readOffset);
@@ -62,8 +94,9 @@ void DescriptorPool::set_descriptor_write(Buffer*         buffer,
     VkWriteDescriptorSet writeSetting = Init::write_descriptor_buffer(Translator::get(type), descriptor->handle, &info, bindlessSlot, binding);
 
     descriptor->bindings += 1;
-    descriptor->binded_buffers.push_back(buffer);
-    descriptor->isDynamic = type == UNIFORM_DYNAMIC_BUFFER;
+
+    // descriptor->binded_buffers.push_back(buffer);
+    // descriptor->isDynamic = type == UNIFORM_DYNAMIC_BUFFER;
 
     vkUpdateDescriptorSets(device, 1, &writeSetting, 0, nullptr);
 }

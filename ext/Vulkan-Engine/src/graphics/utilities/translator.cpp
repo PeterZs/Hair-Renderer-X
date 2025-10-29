@@ -228,6 +228,10 @@ VkPipelineStageFlags get(PipelineStage stageFlags) {
         return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     case PipelineStage::STAGE_FRAGMENT_SHADER:
         return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    case PipelineStage::STAGE_VERTEX_INPUT:
+        return VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    case PipelineStage::STAGE_VERTEX_SHADER:
+        return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
     default:
         throw std::invalid_argument("VKEngine error: Unknown PipelineStageFlags");
     }
