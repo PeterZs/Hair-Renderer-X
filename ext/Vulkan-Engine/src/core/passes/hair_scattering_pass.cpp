@@ -73,15 +73,15 @@ void HairScatteringPass::create_hair_scattering_images() {
     configGI.format          = SRGBA_32F;
     configGI.usageFlags      = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
     configGI.mipLevels       = 1;
-    ResourceManager::HAIR_GI = m_device->create_image({m_imageExtent.width, m_imageExtent.width, 32}, configGI, false);
+    ResourceManager::HAIR_GI = m_device->create_image({m_imageExtent.width, m_imageExtent.width,  m_imageExtent.width}, configGI, false);
     ResourceManager::HAIR_GI.create_view(configGI);
     ResourceManager::HAIR_GI.create_sampler(samplerConfig);
 
     // // Normalizing Buffer
-//     m_normBuffer = m_device->create_buffer_VMA(
-//         sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST,
-//         VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
- }
+    //     m_normBuffer = m_device->create_buffer_VMA(
+    //         sizeof(Vec4), BufferUsageFlags::BUFFER_USAGE_STORAGE_BUFFER | BufferUsageFlags::BUFFER_USAGE_TRANSFER_DST,
+    //         VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY);
+}
 void HairScatteringPass::setup_attachments(std::vector<Graphics::AttachmentInfo>& attachments, std::vector<Graphics::SubPassDependency>& dependencies) {
     create_hair_scattering_images();
 }
@@ -236,10 +236,15 @@ void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scen
         const uint32_t WORK_GROUP_SIZE = 8;
         uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
         gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
-        cmd.dispatch_compute({gridSize, gridSize, 5});
+        cmd.dispatch_compute({gridSize, gridSize, gridSize});
 
-        cmd.pipeline_barrier(
-            ResourceManager::HAIR_GI, LAYOUT_GENERAL, LAYOUT_SHADER_READ_ONLY_OPTIMAL, ACCESS_SHADER_WRITE, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_FRAGMENT_SHADER );
+        cmd.pipeline_barrier(ResourceManager::HAIR_GI,
+                             LAYOUT_GENERAL,
+                             LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                             ACCESS_SHADER_WRITE,
+                             ACCESS_SHADER_READ,
+                             STAGE_COMPUTE_SHADER,
+                             STAGE_FRAGMENT_SHADER);
     }
 
 #ifdef HAIR_DISNEY

@@ -68,8 +68,8 @@ void HairViewer::setup() {
     m_scene->add(light);
 
 #ifdef USE_NEURAL_MODELS
-    load_neural_avatar(
-        RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
+    // load_neural_avatar(
+    //     RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
     // load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
     //                    RESOURCES_PATH "models/neural_head_ALVARO.ply",
     //                    "Alvaro",
@@ -87,7 +87,7 @@ void HairViewer::setup() {
     //    {9, 6, 3}
 #else
     Mesh* hair = new Mesh();
-    Tools::Loaders::load_3D_file(hair, MESH_PATH + "straight.hair", false);
+    Tools::Loaders::load_3D_file(hair, MESH_PATH + "curly.hair", false);
     hair->set_scale(0.053f);
     hair->set_rotation({90.0, 180.0f, 0.0f});
     // HairDisneyMaterial* hmat = new HairDisneyMaterial();

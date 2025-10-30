@@ -356,12 +356,12 @@ void ResourceManager::upload_geometry_data(Graphics::Device* const device, Core:
         rd->vertexCount                     = gd.vertexData.size();
         rd->voxelCount                      = gd.voxelData.size();
 
-        std::vector<Vec3> positions;
+        std::vector<Vec4> positions;
         positions.reserve(gd.vertexData.size());
 
         for (const auto& v : gd.vertexData)
-            positions.push_back(v.pos);
-        size_t positionsSize = sizeof(Vec3) * positions.size();
+            positions.push_back(Vec4(v.pos, 1.0));
+        size_t positionsSize = sizeof(Vec4) * positions.size();
 
         device->upload_vertex_arrays(
             *rd, vboSize, gd.vertexData.data(), iboSize, gd.vertexIndex.data(), positionsSize, positions.data(), voxelSize, gd.voxelData.data());
@@ -381,11 +381,13 @@ void ResourceManager::destroy_geometry_data(Core::Geometry* const g) {
     if (rd->loadedOnGPU)
     {
         rd->vbo.cleanup();
-        if (rd->indexCount > 0)
+        if (rd->indexCount > 0){
             rd->ibo.cleanup();
+            rd->indexSSBO.cleanup();
+        }
         if (rd->voxelCount > 0)
             rd->voxelBuffer.cleanup();
-        rd->positionBuffer.cleanup();
+        rd->posSSBO.cleanup();
 
         rd->loadedOnGPU = false;
         get_BLAS(g)->cleanup();

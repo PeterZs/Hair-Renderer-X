@@ -313,7 +313,7 @@ void main() {
             HairTransmittanceMask transMask;
             transMask.hairCount = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz);
             transMask.visibility = directFraction;
-            // transMask.hairCount = (1.0 - directFraction) * 2.0;
+            // transMask.hairCount = (1.0 - directFraction) * 20.0;
 
             bsdf = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
             vec3 lighting = evalEpicHairBSDF(L, V,T, directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5 ) * scene.lights[i].color * scene.lights[i].intensity;

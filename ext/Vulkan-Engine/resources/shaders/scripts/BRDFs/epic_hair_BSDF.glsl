@@ -311,8 +311,9 @@ EpicHairBSDF computeDualScatteringTerms(
   vec3 Sb = vec3(g2(Theta_h - delta_b.r, sigma_f2.r + sigma_b2.r), g2(Theta_h - delta_b.g, sigma_f2.g + sigma_b2.g), g2(Theta_h - delta_b.b, sigma_f2.b + sigma_b2.b)) / PI;
 
   const vec3 LocalScattering = 2.0 * Ab * Sb * db;
+  
 	// Different variant for managing sefl-occlusion issue for global scattering
-  const vec3 GlobalScattering = mix(vec3(1.0), Tf * Sf * df, saturate(HairCount));
+  const vec3 GlobalScattering = mix(vec3(1.0), Tf * Sf * df,  saturate(HairCount));
   // const vec3 GlobalScattering =  (Tf - vec3(TransmittanceMask.visibility)) * df * ( PI * df * LocalScattering);
 
 	

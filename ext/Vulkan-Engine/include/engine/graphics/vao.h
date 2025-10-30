@@ -26,8 +26,8 @@ struct VertexArrays {
     Buffer   ibo         = {};
     uint32_t indexCount  = 0;
 
-    Buffer   positionBuffer;
-    uint32_t segmentsCount = 0;
+    Buffer   posSSBO;
+    Buffer   indexSSBO;
     /*
     Optional, if the geometry need a proxy axis-aligned voxelized volume
     */

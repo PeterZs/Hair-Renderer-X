@@ -503,6 +503,18 @@ void Device::upload_vertex_arrays(VertexArrays& vao,
             vkCmdCopyBuffer(cmd, iboStagingBuffer.handle, vao.ibo.handle, 1, &index_copy);
         });
 
+        // GPU index buffer
+        vao.indexSSBO =
+            create_buffer_VMA(iboSize, BUFFER_USAGE_STORAGE_BUFFER | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_SHADER_DEVICE_ADDRESS, VMA_MEMORY_USAGE_GPU_ONLY);
+
+        m_uploadContext.immediate_submit(m_handle, m_queues[QueueType::GRAPHIC_QUEUE], [&](VkCommandBuffer cmd) {
+            VkBufferCopy index_copy;
+            index_copy.dstOffset = 0;
+            index_copy.srcOffset = 0;
+            index_copy.size      = iboSize;
+            vkCmdCopyBuffer(cmd, iboStagingBuffer.handle, vao.indexSSBO.handle, 1, &index_copy);
+        });
+
         iboStagingBuffer.cleanup();
     }
     if (posData)
@@ -513,7 +525,7 @@ void Device::upload_vertex_arrays(VertexArrays& vao,
         posStagingBuffer.upload_data(posData, posSize);
 
         // GPU Pos buffer
-        vao.positionBuffer =
+        vao.posSSBO =
             create_buffer_VMA(posSize, BUFFER_USAGE_STORAGE_BUFFER | BUFFER_USAGE_TRANSFER_DST | BUFFER_USAGE_SHADER_DEVICE_ADDRESS, VMA_MEMORY_USAGE_GPU_ONLY);
 
         m_uploadContext.immediate_submit(m_handle, m_queues[QueueType::GRAPHIC_QUEUE], [&](VkCommandBuffer cmd) {
@@ -521,7 +533,7 @@ void Device::upload_vertex_arrays(VertexArrays& vao,
             pos_copy.dstOffset = 0;
             pos_copy.srcOffset = 0;
             pos_copy.size      = posSize;
-            vkCmdCopyBuffer(cmd, posStagingBuffer.handle, vao.positionBuffer.handle, 1, &pos_copy);
+            vkCmdCopyBuffer(cmd, posStagingBuffer.handle, vao.posSSBO.handle, 1, &pos_copy);
         });
 
         posStagingBuffer.cleanup();

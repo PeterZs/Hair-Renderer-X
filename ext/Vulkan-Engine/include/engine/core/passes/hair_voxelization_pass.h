@@ -16,7 +16,7 @@ VULKAN_ENGINE_NAMESPACE_BEGIN
 
 namespace Core {
 
-#define ADV_VOXELIZATION 1
+#define DDA_VOXELIZATION 0
 
 class HairVoxelizationPass final : public GraphicPass
 {

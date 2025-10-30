@@ -276,13 +276,14 @@ VkDevice Booter::create_logical_device(std::unordered_map<QueueType, VkQueue>& q
         bufferDeviceAddressFeatures.pNext               = &rayQueryFeatures;
         bufferDeviceAddressFeatures.bufferDeviceAddress = true;
 
-        descriptorIndexingFeatures.sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
-        descriptorIndexingFeatures.pNext                                     = &bufferDeviceAddressFeatures;
-        descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = true; // Enable non-uniform indexing for textures
-        descriptorIndexingFeatures.runtimeDescriptorArray                    = true; // Allow runtime descriptor arrays
-        descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount  = true; // Allow variable descriptor counts
-        descriptorIndexingFeatures.descriptorBindingPartiallyBound           = true; // Allow partially bound descriptor sets
-        descriptorIndexingFeatures.pNext                                     = &bufferDeviceAddressFeatures;
+        descriptorIndexingFeatures.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+        descriptorIndexingFeatures.pNext                                      = &bufferDeviceAddressFeatures;
+        descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing  = true; // Enable non-uniform indexing for textures
+        descriptorIndexingFeatures.runtimeDescriptorArray                     = true; // Allow runtime descriptor arrays
+        descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount   = true; // Allow variable descriptor counts
+        descriptorIndexingFeatures.descriptorBindingPartiallyBound            = true; // Allow partially bound descriptor sets
+        descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing = true;
+        descriptorIndexingFeatures.pNext                                      = &bufferDeviceAddressFeatures;
 
         atomicFloatFeatures.sType                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
         atomicFloatFeatures.shaderBufferFloat32AtomicAdd = true;

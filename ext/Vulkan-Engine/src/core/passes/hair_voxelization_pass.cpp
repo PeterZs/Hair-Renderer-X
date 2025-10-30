@@ -79,7 +79,7 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
     const float angleIncrement = 2.0f * float(M_PI) * (1.0f - 1.0f / goldenRatio);
 
     for (unsigned int i = 0; i < MAX_DIRECTIONS; ++i)
-    {
+    {   
         float t           = float(i) / float(MAX_DIRECTIONS);
         float inclination = std::acos(1.0f - 2.0f * t); // polar angle
         float azimuth     = angleIncrement * i;         // azimuthal angle
@@ -157,7 +157,7 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
 }
 void HairVoxelizationPass::setup_shader_passes() {
 
-#if ADV_VOXELIZATION == 1
+#if DDA_VOXELIZATION == 1
     ComputeShaderPass* voxelPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/DDA_density_voxelization.glsl");
     voxelPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, true}};
     voxelPass->settings.pushConstants          = {Graphics::PushConstant(SHADER_STAGE_COMPUTE, sizeof(Vec4))};
@@ -248,7 +248,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                     {
 
                         uint32_t objectOffset = currentFrame.uniformBuffers[1].strideSize * mesh_idx;
-#if ADV_VOXELIZATION == 1
+#if DDA_VOXELIZATION == 1
 
                         ShaderPass* shPass = m_shaderPasses[0];
                         cmd.bind_shaderpass(*shPass);
@@ -258,17 +258,13 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                             m_descriptors[currentFrame.index].objectDescritor, 1, *shPass, {objectOffset, objectOffset}, BINDING_TYPE_COMPUTE);
                         cmd.bind_descriptor_set(m_descriptors[currentFrame.index].bufferDescritor, 2, *shPass, {}, BINDING_TYPE_COMPUTE);
 
-                        // BUFFER BARRIAR TO CHANGE IT FOR STORAGE
-                        auto g = m->get_geometry();
-                        cmd.pipeline_barrier(get_VAO(g)->ibo, ACCESS_SHADER_READ, ACCESS_SHADER_READ, STAGE_VERTEX_INPUT, STAGE_COMPUTE_SHADER);
+                        uint32_t numSegments = m->get_geometry()->get_properties().vertexIndex.size() * 0.5;
+                        Vec4     data        = Vec4(float(mesh_idx), float(numSegments), 0.0, 0.0);
+                        cmd.push_constants(*shPass, SHADER_STAGE_COMPUTE, &data, sizeof(Vec4));
 
                         // Dispatch
-                        uint32_t count = 10000;             // per mesh
-                        uint32_t wg    = (count + 31) / 32; // 32 threads
+                        uint32_t wg    = (numSegments + 31) / 32; // 32 threads
                         cmd.dispatch_compute({wg, 1, 1});
-
-                        // BUFFER BARRIAR TO CHANGE IT FOR IBO
-                        cmd.pipeline_barrier(get_VAO(g)->ibo, ACCESS_SHADER_READ, ACCESS_SHADER_READ, STAGE_COMPUTE_SHADER, STAGE_VERTEX_INPUT);
 
 #else
                         /*
@@ -337,7 +333,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
 }
 
 void HairVoxelizationPass::update_uniforms(uint32_t frameIndex, Scene* const scene) {
-#if ADV_VOXELIZATION == 1
+#if DDA_VOXELIZATION == 1
     uint32_t meshIdx = 0;
     for (Mesh* m : scene->get_meshes())
     {
@@ -350,10 +346,10 @@ void HairVoxelizationPass::update_uniforms(uint32_t frameIndex, Scene* const sce
             {
                 // Pos SSBO binding
                 m_descriptorPool.set_descriptor_write(
-                    &vao->positionBuffer, vao->positionBuffer.size, 0, &m_descriptors[frameIndex].bufferDescritor, UNIFORM_STORAGE_BUFFER, 0, meshIdx);
+                    &vao->posSSBO, vao->posSSBO.size, 0, &m_descriptors[frameIndex].bufferDescritor, UNIFORM_STORAGE_BUFFER, 0, meshIdx);
                 // IBO binding
                 m_descriptorPool.set_descriptor_write(
-                    &vao->ibo, vao->ibo.size, 0, &m_descriptors[frameIndex].bufferDescritor, UNIFORM_STORAGE_BUFFER, 1, meshIdx);
+                    &vao->indexSSBO, vao->indexSSBO.size, 0, &m_descriptors[frameIndex].bufferDescritor, UNIFORM_STORAGE_BUFFER, 1, meshIdx);
             }
         }
         meshIdx++;
