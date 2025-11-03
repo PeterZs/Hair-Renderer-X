@@ -1,10 +1,6 @@
 #include <engine/tools/loaders.h>
 
-void VKFW::Tools::Loaders::load_OBJ(Core::Mesh* const mesh,
-                                    const std::string fileName,
-                                    bool              importMaterials,
-                                    bool              calculateTangents,
-                                    bool              overrideGeometry) {
+void VKFW::Tools::Loaders::load_OBJ(Core::Mesh* const mesh, const std::string fileName, bool importMaterials, bool calculateTangents, bool overrideGeometry) {
     // std::this_thread::sleep_for(std::chrono::seconds(4)); //Debuging
 
     // Preparing output
@@ -86,7 +82,7 @@ void VKFW::Tools::Loaders::load_OBJ(Core::Mesh* const mesh,
                 for (size_t j = 0; j < shape.mesh.num_face_vertices[i]; j++)
                 {
                     Graphics::Vertex vertex{};
-                    size_t vertex_index = shape.mesh.indices[i * shape.mesh.num_face_vertices[i] + j].vertex_index;
+                    size_t           vertex_index = shape.mesh.indices[i * shape.mesh.num_face_vertices[i] + j].vertex_index;
                     // Pos
                     if (!attrib.vertices.empty())
                     {
@@ -193,8 +189,7 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
                 std::cout << "\t[ply_header] element: " << e.name << " (" << e.size << ")" << std::endl;
                 for (const auto& p : e.properties)
                 {
-                    std::cout << "\t[ply_header] \tproperty: " << p.name
-                              << " (type=" << tinyply::PropertyTable[p.propertyType].str << ")";
+                    std::cout << "\t[ply_header] \tproperty: " << p.name << " (type=" << tinyply::PropertyTable[p.propertyType].str << ")";
                     if (p.isList)
                         std::cout << " (list_type=" << tinyply::PropertyTable[p.listType].str << ")";
                     std::cout << std::endl;
@@ -212,27 +207,21 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
         { std::cerr << "tinyply exception: " << e.what() << std::endl; }
 
         try
-        {
-            normals = file.request_properties_from_element("vertex", {"nx", "ny", "nz"});
-        } catch (const std::exception& e)
+        { normals = file.request_properties_from_element("vertex", {"nx", "ny", "nz"}); } catch (const std::exception& e)
         {
             if (verbose)
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
         }
 
         try
-        {
-            colors = file.request_properties_from_element("vertex", {"red", "green", "blue", "alpha"});
-        } catch (const std::exception& e)
+        { colors = file.request_properties_from_element("vertex", {"red", "green", "blue", "alpha"}); } catch (const std::exception& e)
         {
             if (verbose)
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
         }
 
         try
-        {
-            colors = file.request_properties_from_element("vertex", {"r", "g", "b", "a"});
-        } catch (const std::exception& e)
+        { colors = file.request_properties_from_element("vertex", {"r", "g", "b", "a"}); } catch (const std::exception& e)
         {
             if (verbose)
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
@@ -264,9 +253,7 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
         // Tristrips must always be read with a 0 list size hint (unless you know exactly how many elements
         // are specifically in the file, which is unlikely);
         try
-        {
-            tripstrip = file.request_properties_from_element("tristrips", {"vertex_indices"}, 0);
-        } catch (const std::exception& e)
+        { tripstrip = file.request_properties_from_element("tristrips", {"vertex_indices"}, 0); } catch (const std::exception& e)
         {
             if (verbose)
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
@@ -281,8 +268,7 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
         {
 
             const float parsingTime = static_cast<float>(readTimer.get()) / 1000.f;
-            std::cout << "\tparsing " << size_mb << "mb in " << parsingTime << " seconds [" << (size_mb / parsingTime)
-                      << " MBps]" << std::endl;
+            std::cout << "\tparsing " << size_mb << "mb in " << parsingTime << " seconds [" << (size_mb / parsingTime) << " MBps]" << std::endl;
 
             if (positions)
                 std::cout << "\tRead " << positions->count << " total vertices " << std::endl;
@@ -295,8 +281,8 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
             if (faces)
                 std::cout << "\tRead " << faces->count << " total faces (triangles) " << std::endl;
             if (tripstrip)
-                std::cout << "\tRead " << (tripstrip->buffer.size_bytes() / tinyply::PropertyTable[tripstrip->t].stride)
-                          << " total indices (tristrip) " << std::endl;
+                std::cout << "\tRead " << (tripstrip->buffer.size_bytes() / tinyply::PropertyTable[tripstrip->t].stride) << " total indices (tristrip) "
+                          << std::endl;
         }
 
         std::vector<Graphics::Vertex> vertices;
@@ -319,10 +305,9 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
             {
 
                 Vec3 position = Vec3(posData[i * 3], posData[i * 3 + 1], posData[i * 3 + 2]);
-                Vec3 normal =
-                    normals ? Vec3(normalData[i * 3], normalData[i * 3 + 1], normalData[i * 3 + 2]) : Vec3(0.0f);
-                Vec3 color = colors ? Vec3(colorData[i * 3], colorData[i * 3 + 1], colorData[i * 3 + 2]) : Vec3(1.0f);
-                Vec2 uv    = texcoords ? Vec2(uvData[i * 2], uvData[i * 2 + 1]) : Vec2(0.0f);
+                Vec3 normal   = normals ? Vec3(normalData[i * 3], normalData[i * 3 + 1], normalData[i * 3 + 2]) : Vec3(0.0f);
+                Vec3 color    = colors ? Vec3(colorData[i * 3], colorData[i * 3 + 1], colorData[i * 3 + 2]) : Vec3(1.0f);
+                Vec2 uv       = texcoords ? Vec2(uvData[i * 2], uvData[i * 2 + 1]) : Vec2(0.0f);
 
                 vertices.push_back({position, normal, {0.0f, 0.0f, 0.0f}, uv, color});
             }
@@ -361,10 +346,7 @@ void VKFW::Tools::Loaders::load_PLY(Core::Mesh* const mesh,
     } catch (const std::exception& e)
     { std::cerr << "Caught tinyply exception: " << e.what() << std::endl; }
 }
-void VKFW::Tools::Loaders::load_3D_file(Core::Mesh* const mesh,
-                                        const std::string fileName,
-                                        bool              asynCall,
-                                        bool              overrideGeometry) {
+void VKFW::Tools::Loaders::load_3D_file(Core::Mesh* const mesh, const std::string fileName, bool asynCall, bool overrideGeometry) {
     size_t dotPosition = fileName.find_last_of(".");
 
     if (dotPosition != std::string::npos)
@@ -537,41 +519,40 @@ void VKFW::Tools::Loaders::load_hair(Core::Mesh* const mesh, const char* fileNam
 
     fclose(fp);
 
-    auto computeDirection =
-        [](float* d, float& d0len, float& d1len, float const* p0, float const* p1, float const* p2) {
-            // line from p0 to p1
-            float d0[3];
-            d0[0]         = p1[0] - p0[0];
-            d0[1]         = p1[1] - p0[1];
-            d0[2]         = p1[2] - p0[2];
-            float d0lensq = d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2];
-            d0len         = (d0lensq > 0) ? (float)sqrt(d0lensq) : 1.0f;
+    auto computeDirection = [](float* d, float& d0len, float& d1len, float const* p0, float const* p1, float const* p2) {
+        // line from p0 to p1
+        float d0[3];
+        d0[0]         = p1[0] - p0[0];
+        d0[1]         = p1[1] - p0[1];
+        d0[2]         = p1[2] - p0[2];
+        float d0lensq = d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2];
+        d0len         = (d0lensq > 0) ? (float)sqrt(d0lensq) : 1.0f;
 
-            // line from p1 to p2
-            float d1[3];
-            d1[0]         = p2[0] - p1[0];
-            d1[1]         = p2[1] - p1[1];
-            d1[2]         = p2[2] - p1[2];
-            float d1lensq = d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2];
-            d1len         = (d1lensq > 0) ? (float)sqrt(d1lensq) : 1.0f;
+        // line from p1 to p2
+        float d1[3];
+        d1[0]         = p2[0] - p1[0];
+        d1[1]         = p2[1] - p1[1];
+        d1[2]         = p2[2] - p1[2];
+        float d1lensq = d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2];
+        d1len         = (d1lensq > 0) ? (float)sqrt(d1lensq) : 1.0f;
 
-            // make sure that d0 and d1 has the same length
-            d0[0] *= d1len / d0len;
-            d0[1] *= d1len / d0len;
-            d0[2] *= d1len / d0len;
+        // make sure that d0 and d1 has the same length
+        d0[0] *= d1len / d0len;
+        d0[1] *= d1len / d0len;
+        d0[2] *= d1len / d0len;
 
-            // direction at p1
-            d[0]         = d0[0] + d1[0];
-            d[1]         = d0[1] + d1[1];
-            d[2]         = d0[2] + d1[2];
-            float dlensq = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
-            float dlen   = (dlensq > 0) ? (float)sqrt(dlensq) : 1.0f;
-            d[0] /= dlen;
-            d[1] /= dlen;
-            d[2] /= dlen;
+        // direction at p1
+        d[0]         = d0[0] + d1[0];
+        d[1]         = d0[1] + d1[1];
+        d[2]         = d0[2] + d1[2];
+        float dlensq = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+        float dlen   = (dlensq > 0) ? (float)sqrt(dlensq) : 1.0f;
+        d[0] /= dlen;
+        d[1] /= dlen;
+        d[2] /= dlen;
 
-            // return d0len;
-        };
+        // return d0len;
+    };
 
     auto fillDirectionArray = [=](float* dir) {
         if (dir == nullptr || header.point_count <= 0 || points == nullptr)
@@ -585,8 +566,7 @@ void VKFW::Tools::Loaders::load_hair(Core::Mesh* const mesh, const char* fileNam
             {
                 // direction at point1
                 float len0, len1;
-                computeDirection(
-                    &dir[(p + 1) * 3], len0, len1, &points[p * 3], &points[(p + 1) * 3], &points[(p + 2) * 3]);
+                computeDirection(&dir[(p + 1) * 3], len0, len1, &points[p * 3], &points[(p + 1) * 3], &points[(p + 2) * 3]);
 
                 // direction at point0
                 float d0[3];
@@ -605,8 +585,7 @@ void VKFW::Tools::Loaders::load_hair(Core::Mesh* const mesh, const char* fileNam
                 // Compute the direction for the rest
                 for (int t = 2; t < s; t++, p++)
                 {
-                    computeDirection(
-                        &dir[p * 3], len0, len1, &points[(p - 1) * 3], &points[p * 3], &points[(p + 1) * 3]);
+                    computeDirection(&dir[p * 3], len0, len1, &points[(p - 1) * 3], &points[p * 3], &points[(p + 1) * 3]);
                 }
 
                 // direction at the last point
@@ -649,7 +628,7 @@ void VKFW::Tools::Loaders::load_hair(Core::Mesh* const mesh, const char* fileNam
 
     size_t index   = 0;
     size_t pointId = 0;
-    for (size_t hair = 0; hair < header.hair_count; hair++)
+    for (size_t hair = 0; hair < header.hair_count; hair++) // Hair Fiber
     {
         glm::vec3 color        = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
         size_t    max_segments = segments ? segments[hair] : header.d_segments;
@@ -676,14 +655,40 @@ void VKFW::Tools::Loaders::load_hair(Core::Mesh* const mesh, const char* fileNam
 
     Core::Geometry* g = new Core::Geometry();
     g->fill(vertices, indices);
+
+     pointId          = 0;
+    float  totalFiberLength = 0.0f;
+
+    for (size_t hair = 0; hair < header.hair_count; hair++)
+    {
+        size_t max_segments = segments ? segments[hair] : header.d_segments;
+
+        float hairLength = 0.0f;
+
+        for (size_t i = 0; i < max_segments; i++)
+        {
+            // Read p0 and p1 directly from hair file points
+            glm::vec3 p0(points[pointId + 0], points[pointId + 1], points[pointId + 2]);
+            glm::vec3 p1(points[pointId + 3], points[pointId + 4], points[pointId + 5]);
+
+            hairLength += glm::length(p1 - p0);
+
+            pointId += 3;
+        }
+
+        totalFiberLength += hairLength;
+
+        // last vertex for this hair
+        pointId += 3;
+    }
+    float avgFiberLength = totalFiberLength / header.hair_count;
+    g->set_avg_fiber_length(avgFiberLength);
+
     mesh->push_geometry(g);
     mesh->set_file_route(std::string(fileName));
 }
 
-void VKFW::Tools::Loaders::load_texture(Core::ITexture* const texture,
-                                        const std::string     fileName,
-                                        TextureFormatType     textureFormat,
-                                        bool                  asyncCall) {
+void VKFW::Tools::Loaders::load_texture(Core::ITexture* const texture, const std::string fileName, TextureFormatType textureFormat, bool asyncCall) {
     size_t dotPosition = fileName.find_last_of(".");
 
     if (dotPosition != std::string::npos)
@@ -695,8 +700,7 @@ void VKFW::Tools::Loaders::load_texture(Core::ITexture* const texture,
         {
             if (asyncCall)
             {
-                std::thread loadThread(
-                    Loaders::load_PNG, static_cast<Core::Texture*>(texture), fileName, textureFormat);
+                std::thread loadThread(Loaders::load_PNG, static_cast<Core::Texture*>(texture), fileName, textureFormat);
                 loadThread.detach();
             } else
                 Loaders::load_PNG(static_cast<Core::Texture*>(texture), fileName, textureFormat);
@@ -722,9 +726,7 @@ void VKFW::Tools::Loaders::load_texture(Core::ITexture* const texture,
     }
 }
 
-void VKFW::Tools::Loaders::load_PNG(Core::Texture* const texture,
-                                    const std::string    fileName,
-                                    TextureFormatType    textureFormat) {
+void VKFW::Tools::Loaders::load_PNG(Core::Texture* const texture, const std::string fileName, TextureFormatType textureFormat) {
     int            w, h, ch;
     unsigned char* imgCache = nullptr;
     imgCache                = stbi_load(fileName.c_str(), &w, &h, &ch, STBI_rgb_alpha);
@@ -776,10 +778,7 @@ void VKFW::Tools::Loaders::load_HDRi(Core::TextureHDR* const texture, const std:
     LOG_DEBUG("HDRi Texture loaded successfully");
 #endif // DEBUG
 }
-void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
-                                           const std::string     fileName,
-                                           uint16_t              depth,
-                                           TextureFormatType     textureFormat) {
+void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture, const std::string fileName, uint16_t depth, TextureFormatType textureFormat) {
 
     size_t dotPosition = fileName.find_last_of(".");
 
@@ -799,11 +798,7 @@ void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
                 int      largerSide  = w > h ? w : h;
                 int      shorterSide = w > h ? h : w;
                 uint16_t finalDepth  = depth == 0 ? largerSide / shorterSide : depth;
-                texture->set_image_cache(imgCache,
-                                         {static_cast<unsigned int>(shorterSide),
-                                          static_cast<unsigned int>(largerSide / finalDepth),
-                                          finalDepth},
-                                         4);
+                texture->set_image_cache(imgCache, {static_cast<unsigned int>(shorterSide), static_cast<unsigned int>(largerSide / finalDepth), finalDepth}, 4);
                 // Set automatically the optimal format for each type.
                 // User can override it after, I he need some other more specific format ...
                 switch (textureFormat)
@@ -837,11 +832,7 @@ void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
                 int      largerSide  = w > h ? w : h;
                 int      shorterSide = w > h ? h : w;
                 uint16_t finalDepth  = depth == 0 ? largerSide / shorterSide : depth;
-                texture->set_image_cache(HDRcache,
-                                         {static_cast<unsigned int>(shorterSide),
-                                          static_cast<unsigned int>(largerSide / finalDepth),
-                                          finalDepth},
-                                         4);
+                texture->set_image_cache(HDRcache, {static_cast<unsigned int>(shorterSide), static_cast<unsigned int>(largerSide / finalDepth), finalDepth}, 4);
                 texture->set_format(SRGBA_32F);
 
             } else
@@ -858,8 +849,7 @@ void VKFW::Tools::Loaders::load_3D_texture(Core::ITexture* const texture,
     LOG_DEBUG("3D Texture loaded successfully");
 #endif // DEBUG
 }
-void VKFW::Tools::Loaders::compute_tangents_gram_smidt(std::vector<Graphics::Vertex>& vertices,
-                                                       const std::vector<uint32_t>&   indices) {
+void VKFW::Tools::Loaders::compute_tangents_gram_smidt(std::vector<Graphics::Vertex>& vertices, const std::vector<uint32_t>& indices) {
     if (!indices.empty())
         for (size_t i = 0; i < indices.size(); i += 3)
         {
@@ -867,13 +857,8 @@ void VKFW::Tools::Loaders::compute_tangents_gram_smidt(std::vector<Graphics::Ver
             size_t i1 = indices[i + 1];
             size_t i2 = indices[i + 2];
 
-            Vec3 tangent = Graphics::Utils::get_tangent_gram_smidt(vertices[i0].pos,
-                                                                   vertices[i1].pos,
-                                                                   vertices[i2].pos,
-                                                                   vertices[i0].texCoord,
-                                                                   vertices[i1].texCoord,
-                                                                   vertices[i2].texCoord,
-                                                                   vertices[i0].normal);
+            Vec3 tangent = Graphics::Utils::get_tangent_gram_smidt(
+                vertices[i0].pos, vertices[i1].pos, vertices[i2].pos, vertices[i0].texCoord, vertices[i1].texCoord, vertices[i2].texCoord, vertices[i0].normal);
 
             vertices[i0].tangent += tangent;
             vertices[i1].tangent += tangent;

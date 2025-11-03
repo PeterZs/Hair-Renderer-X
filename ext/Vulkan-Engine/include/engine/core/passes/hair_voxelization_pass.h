@@ -10,13 +10,14 @@
 #include <engine/core/passes/pass.h>
 #include <engine/core/resource_manager.h>
 
-// #define USE_IMG_ATOMIC_OPERATION
 
 VULKAN_ENGINE_NAMESPACE_BEGIN
 
 namespace Core {
 
 #define DDA_VOXELIZATION 0
+#define OPTICAL_DENSITY 1
+#define RASTER_VOXELIZATION 0
 
 class HairVoxelizationPass final : public GraphicPass
 {

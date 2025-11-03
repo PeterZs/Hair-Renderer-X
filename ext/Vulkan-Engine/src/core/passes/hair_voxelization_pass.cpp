@@ -7,20 +7,26 @@ namespace Core {
 void HairVoxelizationPass::create_voxelization_image() {
 
     // Actual Voxel Image
-    ResourceManager::HAIR_DENSITY_VOLUME.cleanup();
+    ResourceManager::HAIR_VOXEL_VOLUME.cleanup();
 
-    ImageConfig config                   = {};
-    config.viewType                      = TEXTURE_3D;
-    config.format                        = SR_32F;
-    config.usageFlags                    = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
-    config.mipLevels                     = 1;
-    ResourceManager::HAIR_DENSITY_VOLUME = m_device->create_image({m_imageExtent.width, m_imageExtent.width, m_imageExtent.width}, config, false);
-    ResourceManager::HAIR_DENSITY_VOLUME.create_view(config);
+    ImageConfig config                 = {};
+    config.viewType                    = TEXTURE_3D;
+    config.format                      = SR_32F;
+    config.usageFlags                  = IMAGE_USAGE_SAMPLED | IMAGE_USAGE_TRANSFER_DST | IMAGE_USAGE_TRANSFER_SRC | IMAGE_USAGE_STORAGE;
+    config.mipLevels                   = 1;
+    ResourceManager::HAIR_VOXEL_VOLUME = m_device->create_image({m_imageExtent.width, m_imageExtent.width, m_imageExtent.width}, config, false);
+    ResourceManager::HAIR_VOXEL_VOLUME.create_view(config);
 
     SamplerConfig samplerConfig      = {};
     samplerConfig.samplerAddressMode = ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerConfig.border             = BorderColor::FLOAT_OPAQUE_BLACK;
-    ResourceManager::HAIR_DENSITY_VOLUME.create_sampler(samplerConfig);
+    ResourceManager::HAIR_VOXEL_VOLUME.create_sampler(samplerConfig);
+
+    // Count Voxel Image
+    ResourceManager::HAIR_VOXEL_VOLUME_2.cleanup();
+    ResourceManager::HAIR_VOXEL_VOLUME_2 = m_device->create_image({m_imageExtent.width, m_imageExtent.width, m_imageExtent.width}, config, false);
+    ResourceManager::HAIR_VOXEL_VOLUME_2.create_view(config);
+    ResourceManager::HAIR_VOXEL_VOLUME_2.create_sampler(samplerConfig);
 
     // Codified percieved Density
     ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME.cleanup();
@@ -79,7 +85,7 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
     const float angleIncrement = 2.0f * float(M_PI) * (1.0f - 1.0f / goldenRatio);
 
     for (unsigned int i = 0; i < MAX_DIRECTIONS; ++i)
-    {   
+    {
         float t           = float(i) / float(MAX_DIRECTIONS);
         float inclination = std::acos(1.0f - 2.0f * t); // polar angle
         float azimuth     = angleIncrement * i;         // azimuthal angle
@@ -105,7 +111,8 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
     LayoutBinding shBinding(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 3);
     LayoutBinding dirBinding(UNIFORM_STORAGE_BUFFER, SHADER_STAGE_COMPUTE, 4);
     LayoutBinding voxelSamplerBindng(UNIFORM_COMBINED_IMAGE_SAMPLER, SHADER_STAGE_COMPUTE, 5);
-    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {camBufferBinding, sceneBufferBinding, voxelBinding, shBinding, dirBinding, voxelSamplerBindng});
+    LayoutBinding voxelBindng2(UNIFORM_STORAGE_IMAGE, SHADER_STAGE_COMPUTE, 6);
+    m_descriptorPool.set_layout(GLOBAL_LAYOUT, {camBufferBinding, sceneBufferBinding, voxelBinding, shBinding, dirBinding, voxelSamplerBindng, voxelBindng2});
 
     // PER-OBJECT SET
     LayoutBinding objectBufferBinding(UNIFORM_DYNAMIC_BUFFER, SHADER_STAGE_VERTEX | SHADER_STAGE_GEOMETRY | SHADER_STAGE_FRAGMENT, 0);
@@ -134,12 +141,13 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
                                               UNIFORM_DYNAMIC_BUFFER,
                                               1);
         // Voxelization Image
-        m_descriptorPool.set_descriptor_write(
-            &ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 2, UNIFORM_STORAGE_IMAGE);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_VOXEL_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 2, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(
             &ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 3, UNIFORM_STORAGE_IMAGE);
         m_descriptorPool.set_descriptor_write(&m_directionsBuffer, BUFFER_SIZE, 0, &m_descriptors[i].globalDescritor, UNIFORM_STORAGE_BUFFER, 4);
-        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 5);
+        m_descriptorPool.set_descriptor_write(&ResourceManager::HAIR_VOXEL_VOLUME, LAYOUT_SHADER_READ_ONLY_OPTIMAL, &m_descriptors[i].globalDescritor, 5);
+        m_descriptorPool.set_descriptor_write(
+            &ResourceManager::HAIR_VOXEL_VOLUME_2, LAYOUT_GENERAL, &m_descriptors[i].globalDescritor, 6, UNIFORM_STORAGE_IMAGE);
 
         // Per-object
         m_descriptorPool.allocate_descriptor_set(OBJECT_LAYOUT, &m_descriptors[i].objectDescritor);
@@ -157,14 +165,36 @@ void HairVoxelizationPass::setup_uniforms(std::vector<Graphics::Frame>& frames) 
 }
 void HairVoxelizationPass::setup_shader_passes() {
 
+#if OPTICAL_DENSITY == 1
+    ComputeShaderPass* voxelPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/DDA_fiber_optical_density.glsl");
+    voxelPass->settings.descriptorSetLayoutIDs = {{0, true}, {1, true}, {2, true}};
+    voxelPass->settings.pushConstants          = {Graphics::PushConstant(SHADER_STAGE_COMPUTE, sizeof(Vec4))};
+    voxelPass->build_shader_stages();
+    voxelPass->build(m_descriptorPool);
+
+    m_shaderPasses[0] = voxelPass;
+
+    ComputeShaderPass* countPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/opticaldensity_to_count.glsl");
+    countPass->settings.descriptorSetLayoutIDs = {{0, true}, {1, false}, {2, false}};
+    countPass->settings.pushConstants          = {Graphics::PushConstant(SHADER_STAGE_COMPUTE, sizeof(Vec4))};
+    countPass->build_shader_stages();
+    countPass->build(m_descriptorPool);
+
+    m_shaderPasses[2] = countPass;
+
+#endif
 #if DDA_VOXELIZATION == 1
     ComputeShaderPass* voxelPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/DDA_density_voxelization.glsl");
-    voxelPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, true}};
+    voxelPass->settings.descriptorSetLayoutIDs = {{0, true}, {1, true}, {2, true}};
     voxelPass->settings.pushConstants          = {Graphics::PushConstant(SHADER_STAGE_COMPUTE, sizeof(Vec4))};
-#else
+    voxelPass->build_shader_stages();
+    voxelPass->build(m_descriptorPool);
+    
+    m_shaderPasses[0] = voxelPass;
+#elif RASTER_VOXELIZATION == 1
 
     GraphicShaderPass* voxelPass =
-        new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/misc/density_voxelization.glsl");
+        new GraphicShaderPass(m_device->get_handle(), m_renderpass, m_imageExtent, ENGINE_RESOURCES_PATH "shaders/misc/CLASSIC_density_voxelization.glsl");
     voxelPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
     voxelPass->graphicSettings.attributes      = {
         {POSITION_ATTRIBUTE, true}, {NORMAL_ATTRIBUTE, false}, {UV_ATTRIBUTE, false}, {TANGENT_ATTRIBUTE, false}, {COLOR_ATTRIBUTE, false}};
@@ -174,12 +204,11 @@ void HairVoxelizationPass::setup_shader_passes() {
     voxelPass->graphicSettings.depthTest        = false;
     voxelPass->graphicSettings.blendAttachments = {state};
     voxelPass->graphicSettings.topology         = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-#endif
-
     voxelPass->build_shader_stages();
     voxelPass->build(m_descriptorPool);
 
     m_shaderPasses[0] = voxelPass;
+#endif
 
     ComputeShaderPass* shPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_percieved_density.glsl");
     shPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
@@ -197,10 +226,12 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
     /*
     PREPARE VOXEL IMAGES TO BE USED IN SHADERS
     */
-    if (ResourceManager::HAIR_DENSITY_VOLUME.currentLayout == LAYOUT_UNDEFINED)
+    if (ResourceManager::HAIR_VOXEL_VOLUME.currentLayout == LAYOUT_UNDEFINED)
     {
         cmd.pipeline_barrier(
-            ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_FRAGMENT_SHADER);
+            ResourceManager::HAIR_VOXEL_VOLUME, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_FRAGMENT_SHADER);
+        cmd.pipeline_barrier(
+            ResourceManager::HAIR_VOXEL_VOLUME_2, LAYOUT_UNDEFINED, LAYOUT_GENERAL, ACCESS_NONE, ACCESS_SHADER_WRITE, STAGE_TOP_OF_PIPE, STAGE_FRAGMENT_SHADER);
         cmd.pipeline_barrier(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME,
                              LAYOUT_UNDEFINED,
                              LAYOUT_GENERAL,
@@ -211,13 +242,24 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
     } else
     {
 
-        cmd.pipeline_barrier(ResourceManager::HAIR_DENSITY_VOLUME,
+#if OPTICAL_DENSITY == 1
+        cmd.pipeline_barrier(ResourceManager::HAIR_VOXEL_VOLUME_2,
+                             LAYOUT_GENERAL,
+                             LAYOUT_GENERAL,
+                             ACCESS_SHADER_READ,
+                             ACCESS_SHADER_WRITE,
+                             STAGE_COMPUTE_SHADER,
+                             STAGE_COMPUTE_SHADER);
+
+#endif
+        cmd.pipeline_barrier(ResourceManager::HAIR_VOXEL_VOLUME,
                              LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                              LAYOUT_GENERAL,
                              ACCESS_SHADER_READ,
                              ACCESS_SHADER_WRITE,
                              STAGE_COMPUTE_SHADER,
                              STAGE_FRAGMENT_SHADER);
+
         cmd.pipeline_barrier(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME,
                              LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                              LAYOUT_GENERAL,
@@ -229,8 +271,11 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
     /*
     CLEAR IMAGES
     */
-    cmd.clear_image(ResourceManager::HAIR_DENSITY_VOLUME, LAYOUT_GENERAL, ASPECT_COLOR, Vec4(0.0));
+    cmd.clear_image(ResourceManager::HAIR_VOXEL_VOLUME, LAYOUT_GENERAL, ASPECT_COLOR, Vec4(0.0));
     cmd.clear_image(ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME, LAYOUT_GENERAL, ASPECT_COLOR, Vec4(0.0));
+#if OPTICAL_DENSITY == 1
+    cmd.clear_image(ResourceManager::HAIR_VOXEL_VOLUME_2, LAYOUT_GENERAL, ASPECT_COLOR, Vec4(0.0));
+#endif
 
     if (scene->get_active_camera() && scene->get_active_camera()->is_active())
     {
@@ -248,7 +293,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                     {
 
                         uint32_t objectOffset = currentFrame.uniformBuffers[1].strideSize * mesh_idx;
-#if DDA_VOXELIZATION == 1
+#if DDA_VOXELIZATION == 1 || OPTICAL_DENSITY == 1
 
                         ShaderPass* shPass = m_shaderPasses[0];
                         cmd.bind_shaderpass(*shPass);
@@ -259,12 +304,36 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                         cmd.bind_descriptor_set(m_descriptors[currentFrame.index].bufferDescritor, 2, *shPass, {}, BINDING_TYPE_COMPUTE);
 
                         uint32_t numSegments = m->get_geometry()->get_properties().vertexIndex.size() * 0.5;
-                        Vec4     data        = Vec4(float(mesh_idx), float(numSegments), 0.0, 0.0);
+                        float    avgHairLength = m->get_geometry()->get_properties().avgFiberLength * m->get_scale().x;
+                        Vec4     data        = Vec4(float(mesh_idx), float(numSegments), avgHairLength, 0.0);
                         cmd.push_constants(*shPass, SHADER_STAGE_COMPUTE, &data, sizeof(Vec4));
 
                         // Dispatch
-                        uint32_t wg    = (numSegments + 31) / 32; // 32 threads
+                        uint32_t wg = (numSegments + 31) / 32; // 32 threads
                         cmd.dispatch_compute({wg, 1, 1});
+#if OPTICAL_DENSITY == 1
+
+                        cmd.pipeline_barrier(ResourceManager::HAIR_VOXEL_VOLUME_2,
+                                             LAYOUT_GENERAL,
+                                             LAYOUT_GENERAL,
+                                             ACCESS_SHADER_WRITE,
+                                             ACCESS_SHADER_READ,
+                                             STAGE_COMPUTE_SHADER,
+                                             STAGE_COMPUTE_SHADER);
+
+                        shPass = m_shaderPasses[2];
+                        cmd.bind_shaderpass(*shPass);
+
+                        
+                        cmd.push_constants(*shPass, SHADER_STAGE_COMPUTE, &data, sizeof(Vec4));
+
+                        // Dispatch
+                        const uint32_t WORK_GROUP_SIZE = 8;
+                        uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
+                        gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
+                        cmd.dispatch_compute({gridSize, gridSize, gridSize});
+
+#endif
 
 #else
                         /*
@@ -294,7 +363,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                         DISPATCH COMPUTE FOR POPULATING FINAL PERCEIVED DENSITY IMAGE
                         */
 
-                        cmd.pipeline_barrier(ResourceManager::HAIR_DENSITY_VOLUME,
+                        cmd.pipeline_barrier(ResourceManager::HAIR_VOXEL_VOLUME,
                                              LAYOUT_GENERAL,
                                              LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                              ACCESS_SHADER_WRITE,
@@ -310,10 +379,10 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                             m_descriptors[currentFrame.index].objectDescritor, 1, *shPass, {objectOffset, objectOffset}, BINDING_TYPE_COMPUTE);
 
                         // Dispatch the compute shader
-                        const uint32_t WORK_GROUP_SIZE = 4;
-                        uint32_t       gridSize        = std::max(1u, m_imageExtent.width);
-                        gridSize                       = (gridSize + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE;
-                        cmd.dispatch_compute({gridSize, gridSize, gridSize});
+                        const uint32_t WORK_GROUP_SIZE_2 = 4;
+                        uint32_t       gridSize2        = std::max(1u, m_imageExtent.width);
+                        gridSize2                       = (gridSize2 + WORK_GROUP_SIZE_2 - 1) / WORK_GROUP_SIZE_2;
+                        cmd.dispatch_compute({gridSize2, gridSize2, gridSize2});
 
                         break;
                     }
@@ -333,7 +402,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
 }
 
 void HairVoxelizationPass::update_uniforms(uint32_t frameIndex, Scene* const scene) {
-#if DDA_VOXELIZATION == 1
+#if DDA_VOXELIZATION == 1 || OPTICAL_DENSITY == 1
     uint32_t meshIdx = 0;
     for (Mesh* m : scene->get_meshes())
     {
@@ -357,7 +426,8 @@ void HairVoxelizationPass::update_uniforms(uint32_t frameIndex, Scene* const sce
 #endif
 }
 void HairVoxelizationPass::cleanup() {
-    ResourceManager::HAIR_DENSITY_VOLUME.cleanup();
+    ResourceManager::HAIR_VOXEL_VOLUME.cleanup();
+    ResourceManager::HAIR_VOXEL_VOLUME_2.cleanup();
     ResourceManager::HAIR_PERECEIVED_DENSITY_VOLUME.cleanup();
     m_directionsBuffer.cleanup();
     GraphicPass::cleanup();

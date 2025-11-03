@@ -12,18 +12,12 @@ layout(std430, binding = 4) readonly buffer Directions {
 };
 layout(set = 0, binding =5) uniform sampler3D densityVolume;
 
-// // Scene bounds
-// layout(push_constant) uniform PushConstants {
-//     vec3 volumeMin;
-// } params;
-
-
 
 float sampleDensity(vec3 pos, ivec3 dim) {
     vec3 uvw = (pos -  object.minCoord.xyz) / ( object.maxCoord.xyz -  object.minCoord.xyz);
-    // ivec3 coord = ivec3(clamp(uvw * dim, vec3(0), vec3(dim - 1)));
-    // return imageLoad(densityVolume, coord).r;
-    return texture(densityVolume, uvw).r;
+    ivec3 coord = ivec3(clamp(uvw * dim, vec3(0), vec3(dim - 1)));
+    return texelFetch(densityVolume,coord,0 ).r;
+    // return texture(densityVolume, uvw).r;
 }
 
 void main() {
@@ -38,6 +32,7 @@ void main() {
     vec3 gridSize = vec3(RESOLUTION);
     vec3 voxelSize = ( object.maxCoord.xyz -  object.minCoord.xyz) / gridSize;
     vec3 voxelCenter =  object.minCoord.xyz + (vec3(gid) + 0.5) * voxelSize;
+    if (sampleDensity(voxelCenter, RESOLUTION) == 0.0) return;
 
     // SH L1 accumulator
     vec4 sh = vec4(0.0);

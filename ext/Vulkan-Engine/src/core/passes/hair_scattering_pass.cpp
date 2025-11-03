@@ -151,14 +151,6 @@ void HairScatteringPass::setup_uniforms(std::vector<Graphics::Frame>& frames) {
 
 void HairScatteringPass::setup_shader_passes() {
 
-    ComputeShaderPass* mergePass =
-        new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_fiber_scattering_disney.glsl");
-    mergePass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
-
-    mergePass->build_shader_stages();
-    mergePass->build(m_descriptorPool);
-
-    m_shaderPasses[0] = mergePass;
 
     ComputeShaderPass* NPass               = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_NGI.glsl");
     NPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
@@ -182,13 +174,7 @@ void HairScatteringPass::setup_shader_passes() {
     LUTPass->build(m_descriptorPool);
     m_shaderPasses[2] = LUTPass;
 
-    ComputeShaderPass* normPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_hair_over_sphere.glsl");
-    normPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, TRUE}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
-
-    normPass->build_shader_stages();
-    normPass->build(m_descriptorPool);
-
-    m_shaderPasses[3] = normPass;
+   
 }
 
 void HairScatteringPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint32_t presentImageIndex) {

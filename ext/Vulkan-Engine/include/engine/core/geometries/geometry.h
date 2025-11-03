@@ -30,6 +30,8 @@ struct GeometricData {
     Vec3 minCoords;
     Vec3 center;
 
+    float avgFiberLength = 0.0f; // If fiber;
+
     bool loaded{false};
 
     void compute_statistics();
@@ -72,6 +74,9 @@ class Geometry
     inline const GeometricData& get_properties() const {
         return m_properties;
     }
+    inline void set_avg_fiber_length(float length) {
+        m_properties.avgFiberLength = length;
+    };
     /*
     Use Voxel Acceleration Structure
     */
