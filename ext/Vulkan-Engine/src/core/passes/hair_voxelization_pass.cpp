@@ -210,7 +210,7 @@ void HairVoxelizationPass::setup_shader_passes() {
     m_shaderPasses[0] = voxelPass;
 #endif
 
-    ComputeShaderPass* shPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/compute_percieved_density.glsl");
+    ComputeShaderPass* shPass = new ComputeShaderPass(m_device->get_handle(), ENGINE_RESOURCES_PATH "shaders/misc/encode_density_SH.glsl");
     shPass->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, false}};
 
     shPass->build_shader_stages();
@@ -379,7 +379,7 @@ void HairVoxelizationPass::render(Graphics::Frame& currentFrame, Scene* const sc
                             m_descriptors[currentFrame.index].objectDescritor, 1, *shPass, {objectOffset, objectOffset}, BINDING_TYPE_COMPUTE);
 
                         // Dispatch the compute shader
-                        const uint32_t WORK_GROUP_SIZE_2 = 4;
+                        const uint32_t WORK_GROUP_SIZE_2 = 8;
                         uint32_t       gridSize2        = std::max(1u, m_imageExtent.width);
                         gridSize2                       = (gridSize2 + WORK_GROUP_SIZE_2 - 1) / WORK_GROUP_SIZE_2;
                         cmd.dispatch_compute({gridSize2, gridSize2, gridSize2});

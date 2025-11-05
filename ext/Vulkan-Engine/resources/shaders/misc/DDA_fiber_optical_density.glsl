@@ -10,6 +10,8 @@
 #include object.glsl  
 #include utils.glsl
 
+#define USE_SPLAT_KERNEL 1
+
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
 
@@ -119,9 +121,38 @@ void main() {
         float segParam = max(0.0, nextT - t); // param fraction in voxel-space
 
         // convert param fraction to world-length
-        float lenInVoxel = segLenWorld * segParam;
+        float lenInVoxel = segLenWorld * segParam ;
+
+#if USE_SPLAT_KERNEL == 1
+        // TRILINEAR SPLATTING
+        //------------------------------------------------------------
+        vec3 pos = a + (t + segParam * 0.5) * (b - a); // midpoint of segment slice
+        vec3 vpos = clamp(pos, vec3(0.0), vec3(gridSize - 1));
+
+        ivec3 base = ivec3(floor(vpos));
+        vec3 frac = vpos - vec3(base);
+
+        for (int dz = 0; dz <= 1; ++dz)
+        for (int dy = 0; dy <= 1; ++dy)
+        for (int dx = 0; dx <= 1; ++dx)
+        {
+            ivec3 c = base + ivec3(dx, dy, dz);
+            if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, gridSize))) continue;
+
+            float wx = dx == 0 ? (1.0 - frac.x) : frac.x;
+            float wy = dy == 0 ? (1.0 - frac.y) : frac.y;
+            float wz = dz == 0 ? (1.0 - frac.z) : frac.z;
+
+            float w = wx * wy * wz; // trilinear weight
+
+            imageAtomicAdd(voxelLengthImage, c, lenInVoxel * w);
+        }
+
+#else
 
         imageAtomicAdd(voxelLengthImage, clamp(voxel, ivec3(0), gridSize - 1), lenInVoxel);
+#endif
+
         if (all(equal(voxel, endVoxel))) break;
 
         // step the axis with smallest tMax

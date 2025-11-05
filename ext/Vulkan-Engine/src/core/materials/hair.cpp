@@ -74,7 +74,7 @@ Graphics::MaterialUniforms HairEpicMaterial::get_uniforms() const {
     uniforms.dataSlot3 = {m_ior, m_Rpower, m_TTpower, m_TRTpower};
     uniforms.dataSlot4 = {0.0, m_useLegacyAbsorption, m_useSeparableR, m_useBacklit};
     uniforms.dataSlot5 = {m_clampBSDFValue, m_R, m_TT, m_TRT};
-    uniforms.dataSlot6 = {m_useScatter, 0.0, 0.0, 0.0};
+    uniforms.dataSlot6 = {m_useScatter, m_densityBoost, 0.0, 0.0};
 
     return uniforms;
 }

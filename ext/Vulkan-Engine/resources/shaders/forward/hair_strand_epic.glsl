@@ -118,7 +118,6 @@ void main() {
 #include sh.glsl
 #include BRDFs/epic_hair_BSDF.glsl
 
-
 //Input
 layout(location = 0) in vec3 g_pos;
 layout(location = 1) in vec3 g_modelPos;
@@ -162,6 +161,7 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
     float trt;
 
     float scatter;
+    float densityBoost;
 
 } material;
 
@@ -169,8 +169,6 @@ EpicHairBSDF bsdf;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 outBrightColor;
-
-
 
 vec3 computeAmbient(vec3 n) {
 
@@ -195,7 +193,6 @@ float getNumberOfStrands(vec3 worldPos, vec3 lightWorldPos) {
     // Compute voxel UVW coords in object space
     vec3 uvw = (worldPos - object.minCoord.xyz) / (object.maxCoord.xyz - object.minCoord.xyz);
     uvw = clamp(uvw, 0.0, 0.9999);
-
 
     // Fetch SH L1 and decode
     // ivec3 coord = ivec3(uvw * vec3(textureSize(hairVoxels, 0)));
@@ -285,8 +282,6 @@ void main() {
     bsdf.globalScattering = vec3(1.0);
 
     // bsdf.scatteringComponentEnabled = uint(material.scatteringComponentEnabled);
-   
-
 
     //DIRECT LIGHTING .......................................................
     vec3 color = vec3(0.0);
@@ -306,20 +301,31 @@ void main() {
 
             vec3 L = normalize(scene.lights[i].position.xyz - g_pos);
             vec3 V = normalize(-g_pos);
-            vec3 T =  normalize(g_dir);
+            vec3 T = normalize(g_dir);
             float inBacklit = saturate(dot(-L, V));
-          
+
             //Number of traversed strands
             HairTransmittanceMask transMask;
-            transMask.hairCount = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz);
+            float rawCount = getNumberOfStrands(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz);
+            rawCount *= material.densityBoost;
+#define USE_AMANATIDES_WOO_DDA 1
+#if USE_AMANATIDES_WOO_DDA 
+            // Much weaker perceptual curve now
+            float k = 0.6;                          // instead of 2.0
+            float hLog = log(1.0 + k * rawCount) / log(1.0 + k);
+            float hSmooth = pow(hLog, 0.9);         // more linear, less softening
+#else
+            // This is basically a perceptual remap + contrast recovery
+            float k = 2.0;
+            float hLog = log(1.0 + k * rawCount) / log(1.0 + k);
+            float hSmooth = pow(hLog, 0.8); // 0.7–0.9 = softer
+#endif
+            transMask.hairCount = hSmooth;
+
             transMask.visibility = directFraction;
-            // transMask.hairCount = (1.0 - directFraction) * 20.0;
-            // transMask.hairCount *= 0.02;
-            // transMask.hairCount = log2(1.0 +  transMask.hairCount);  // smooth compression
 
             bsdf = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
-            vec3 lighting = evalEpicHairBSDF(L, V,T, directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5 ) * scene.lights[i].color * scene.lights[i].intensity;
-            
+            vec3 lighting = evalEpicHairBSDF(L, V, T, directFraction, bsdf, inBacklit, scene.lights[i].area, material.r > 0.5, material.tt > 0.5, material.trt > 0.5, material.scatter > 0.5) * scene.lights[i].color * scene.lights[i].intensity;
 
             color += lighting;
             // if(transMask.hairCount < 1000000.0)
@@ -328,7 +334,7 @@ void main() {
     }
 
     // vec3 n1 = cross(g_modelDir, cross(camera.position.xyz, g_modelDir));
-    vec3 fakeNormal = normalize( g_modelPos - object.volumeCenter);
+    vec3 fakeNormal = normalize(g_modelPos - object.volumeCenter);
     // vec3 fakeNormal = mix(n1,n2,0.5);
 
     //AMBIENT COMPONENT ..........................................................
@@ -342,7 +348,6 @@ void main() {
     }
 
 //    vec3 color = vec3(41.0,0.0,0.0);
-
 
     fragColor = vec4(color, 1.0);
      // check whether result is higher than some threshold, if so, output as bloom threshold color

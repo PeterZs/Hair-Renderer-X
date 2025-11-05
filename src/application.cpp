@@ -111,7 +111,7 @@ void HairViewer::setup() {
     head->set_rotation({0.0, 225.0f, 180.0f});
     auto     headMat    = new PhysicallyBasedMaterial();
     Texture* headAlbedo = new Texture();
-    Tools::Loaders::load_texture(headAlbedo, TEXTURE_PATH + "head.png");
+    Tools::Loaders::load_texture(headAlbedo, TEXTURE_PATH + "curly.png");
     headMat->set_albedo_texture(headAlbedo);
     headMat->set_albedo(Vec3(204.0f, 123.0f, 85.0f) / 255.0f);
     headMat->set_albedo_weight(0.75f);

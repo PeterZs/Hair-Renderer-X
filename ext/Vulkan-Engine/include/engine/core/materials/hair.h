@@ -252,6 +252,8 @@ class HairEpicMaterial : public IMaterial
     float m_shift = 5.2f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float m_ior   = 1.55f;
 
+    float m_densityBoost = 3.0f;
+
     // Query
     bool m_useSeparableR       = false;
     bool m_useLegacyAbsorption = false;
@@ -373,6 +375,13 @@ class HairEpicMaterial : public IMaterial
     }
     void set_metallic(float met) {
         m_metallic = met;
+        m_isDirty  = true;
+    }
+    float get_density_boost() const {
+        return m_densityBoost;
+    }
+    void set_density_boost(float met) {
+        m_densityBoost = met;
         m_isDirty  = true;
     }
 

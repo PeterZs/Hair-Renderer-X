@@ -727,6 +727,11 @@ void ObjectExplorerWidget::render() {
                 {
                     mat->set_useScatter(useScatter); // Update use scatter
                 }
+                float boost = mat->get_density_boost();
+                if (ImGui::DragFloat("Density Boost", &boost, 0.1f, 0.0f, 100.0f))
+                {
+                    mat->set_density_boost(boost); // Update use scatter
+                }
 
                 bool separableB = mat->useSeparableR();
                 if (ImGui::Checkbox("Separable R Term", &separableB))

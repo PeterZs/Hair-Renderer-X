@@ -28,6 +28,7 @@ layout(std430, set = 2, binding = 1) readonly buffer IndexBuffer {
 } indexBuffers[];
 
 #define AMANATIDES_WOO 1
+#define USE_SPLAT_KERNEL 1
 
 void main() {
 
@@ -87,8 +88,32 @@ void main() {
 
     for (int iter = 0; iter < maxSteps; ++iter)
     {
+
+#if USE_SPLAT_KERNEL == 1
+    vec3 frac = a - voxelF;
+
+    // 8-tap trilinear voxel splat
+    for (int dz = 0; dz <= 1; dz++)
+    for (int dy = 0; dy <= 1; dy++)
+    for (int dx = 0; dx <= 1; dx++)
+    {
+        ivec3 c = base + ivec3(dx, dy, dz);
+
+        // bounds check
+        if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, gridSize))) continue;
+
+        float wx = (dx == 0) ? (1.0 - frac.x) : frac.x;
+        float wy = (dy == 0) ? (1.0 - frac.y) : frac.y;
+        float wz = (dz == 0) ? (1.0 - frac.z) : frac.z;
+        float w = wx * wy * wz;
+
+        imageAtomicAdd(voxelImage, c, w);
+    }
+
+#else
         // accumulate (uint counter)
         imageAtomicAdd(voxelImage, clamp(voxel, ivec3(0), gridSize - 1), 1.0);
+#endif
 
         if (all(equal(voxel, endVoxel))) break;
 
