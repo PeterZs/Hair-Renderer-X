@@ -9,6 +9,7 @@
 #define ONE_OVER_PI (1.0 / PI)
 #define ONE_OVER_PI_HALF (2.0 / PI)
 #define DEG2RAD(x) ((x) / 180.0 * PI)
+#define HAIR_GLOBAL_SCALE 4.0
 
 // #define TRANS_MARSHNER
 #define TRANS_EPIC
@@ -95,6 +96,31 @@ vec3 getAbsorptionFromMelanin(float m, float r, float scale) {
     float pheomelanin = melanin * r;
     return eumelanin * vec3(0.506, 0.841, 1.653) + pheomelanin * vec3(0.343, 0.733, 1.924);
 }
+
+// vec3 getAbsorptionFromEpicSliders(float m, float r) {
+//     // 1. Curva de respuesta del slider (Artist Friendly)
+//     // Evita que 0.1 sea ya negro.
+//     // Epic usa internamente curvas parecidas a pow(m, 2.0) o escalas logarítmicas suaves.
+//     float adjustedMelanin = pow(m, 2.0); 
+
+//     // 2. Conversión a Física (Beer-Lambert puro)
+//     // El 0.0001 evita log(0).
+//     float rawAbs = -log(max(1.0 - adjustedMelanin, 0.0001));
+
+//     // 3. FACTOR DE ESCALA (Tu "Concentration Scale")
+//     // Este 0.12 es el "número mágico" que alinea la física con el ojo humano.
+//     // Con 0.12:
+//     // - m=0.15 -> Rubio
+//     // - m=0.50 -> Castaño
+//     // - m=1.00 -> Negro
+//     float effectiveMelanin = rawAbs * 0.12; 
+
+//     // 4. Separación en Eumelanina y Feomelanina
+//     float eumelanin   = effectiveMelanin * (1.0 - r);
+//     float pheomelanin = effectiveMelanin * r;
+
+//     return eumelanin * vec3(0.506, 0.841, 1.653) + pheomelanin * vec3(0.343, 0.733, 1.924);
+// }
 
 
 float g(float theta, float beta, bool bClampBSDFValue) {
@@ -527,7 +553,7 @@ vec3 evalEpicHairBSDF(vec3         L,
 
     S = -min(-S, 0.0);
 
-    return S;
+    return S ;
 }
 
 // Dual scattering computation are done here for faster iteration (i.e., does not invalidate tons of shaders)

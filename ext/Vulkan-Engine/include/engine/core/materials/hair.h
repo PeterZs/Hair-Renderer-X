@@ -250,7 +250,7 @@ class HairEpicMaterial : public IMaterial
         m_sigma_a.b = m_eumelanine * eumelaninSigmaA.b + m_pheomelanine * pheomelaninSigmaA.b;
     }
 
-    Vec3 m_baseColor = {0.2, 0.2, 0.2};
+    Vec3 m_baseColor = Vec3{0.35f};
 
     float m_thickness = 0.003f;
 
@@ -262,7 +262,7 @@ class HairEpicMaterial : public IMaterial
     float m_TRTpower = 2.0f;
 
     float m_roughness = 0.4f;
-    float m_specular  = 1.0f;
+    float m_specular  = 0.5f;
     float m_metallic  = 0.0f;
 
     float m_shift = 5.2f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
@@ -271,12 +271,12 @@ class HairEpicMaterial : public IMaterial
     float m_densityBoost = 1.5f;
 
     // Query
-    bool m_useSeparableR       = false;
+    bool m_useSeparableR       = true;
     bool m_useLegacyAbsorption = false;
     bool m_useBacklit          = false;
     bool m_clampBSDFValue      = false;
     bool m_useScatter          = false;
-    bool m_advancedShadowing   = false;
+    bool m_advancedShadowing   = true;
 
     Mesh* m_skull = nullptr;
 
@@ -297,7 +297,7 @@ class HairEpicMaterial : public IMaterial
     }
 
   public:
-    HairEpicMaterial(Vec3 baseColor = {0.27f, 0.14f, 0.04f})
+    HairEpicMaterial(Vec3 baseColor = {0.35f, 0.35f, 0.35f})
         : IMaterial(HAIR_STR_EPIC_TYPE)
         , m_baseColor(baseColor) {
     }

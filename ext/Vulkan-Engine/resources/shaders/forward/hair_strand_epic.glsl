@@ -68,6 +68,8 @@ void emitQuadPoint(vec4 origin, vec4 right, float offset, vec3 forward, vec3 nor
     EmitVertex();
 }
 
+
+
 void main() {
 
     // Model space --->>>
@@ -365,19 +367,60 @@ vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap
     return transDirect * 0.5;
 }
 
+// // -----------------------------------------------------------------------
+//     // GLINTS & LOD SYSTEM
+//     // -----------------------------------------------------------------------
+float gold_noise(vec2 xy, float seed) {
+    return fract(tan(distance(xy * 1.61803398874989484820459, xy) * seed) * xy.x);
+}
+vec3 computeGlintTangent(){
+    // 1. CONFIGURACIÓN BASE
+    float maxGlintStrength = 0.0;   // Cuánto rompe el brillo de cerca (0.0 a 1.0)
+    float glintScale       = 0.0; // Frecuencia del ruido (ajusta según tus UVs)
+    
+    // 2. CÁLCULO DEL LOD (Distance Fading)
+    // Calculamos la distancia de la cámara al píxel
+    float viewDist = length(g_pos); 
+    
+    // Definimos un rango de desvanecimiento:
+    // - glintStartFade: Distancia donde empieza a desaparecer (ej: 50 cm)
+    // - glintEndFade: Distancia donde desaparece totalmente (ej: 2 metros)
+    // Ajusta estos valores a la escala de tu escena (asumo unidades en cm o m?)
+    float glintStartFade = 8.0;  
+    float glintEndFade   = 50.0; 
+
+    // Calculamos el factor de desvanecimiento (1.0 cerca -> 0.0 lejos)
+    float lodFactor = 1.0 - smoothstep(glintStartFade, glintEndFade, viewDist);
+
+    // 3. GENERAR RUIDO
+    // Solo calculamos si estamos cerca (optimización)
+    vec3 T_Final = normalize(g_dir); // Por defecto es la tangente suave original
+
+    if (lodFactor > 0.001) {
+        // Generamos el ruido basado en UVs
+        float noiseVal = gold_noise(g_uv * glintScale, 1.0); 
+        
+        // Mapeamos a [-1, 1] y aplicamos la fuerza atenuada por la distancia
+        float currentStrength = maxGlintStrength * lodFactor;
+        float tangentNoise    = (noiseVal * 2.0 - 1.0) * currentStrength;
+
+        // 4. PERTURBAR TANGENTE
+        vec3 N_orig = normalize(g_normal);
+        vec3 B_orig = normalize(cross(N_orig, T_Final)); // Binormal
+        
+        // Rotamos la tangente hacia la binormal
+        T_Final = normalize(T_Final + B_orig * tangentNoise);
+
+    }
+        return T_Final;
+
+}
+
+
 void main() {
 
     // BSDF setup ............................................................
-    //  bsdf.baseColor = material.baseColor;
-    // bsdf.baseColor = material.baseColor;
-    // bsdf.baseColor = pow(material.baseColor, vec3(2.2));
-    // bsdf.baseColor = vec3(0.9, 0.7,0.3);
-    // vec3 physicalSigma = getAbsorptionFromMelanin(0.15, 0.3 );
-    // vec3 physicalSigma = getAbsorptionFromMelanin(0.15, 0.3 );
     vec3 physicalSigma = getAbsorptionFromMelanin( material.baseColor.x,  material.baseColor.y,  material.baseColor.z);    
-    // Convertimos ese Sigma a Color RGB usando la fórmula de Epic.
-    // Este color resultante es el que garantiza que cuando la BSDF haga la inversa,
-    // recupere el 'physicalSigma' correcto.
     vec3 epicBaseColor = hairAbsorptionToColor(physicalSigma);
     bsdf.baseColor = epicBaseColor;
 
@@ -426,17 +469,8 @@ void main() {
 
             vec3 L = normalize(scene.lights[i].position.xyz - g_pos);
             vec3 V = normalize(-g_pos);
-            vec3 T = normalize(g_dir);
-
-            // --- GLINT HACK ---
-            // float noiseVal = fract(sin(dot(g_uv * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
-            // // O usar una textura de ruido azul (mejor calidad)
-            // // float noiseVal = texture(NoiseTex, g_uv * 20.0).r;
-            // float glintStrength = 0.4; // Ajustar a gusto
-            // float noiseBias     = (noiseVal * 2.0 - 1.0) * glintStrength;
-            // vec3  Binormal      = normalize(cross(g_normal, g_dir));
-            // vec3  T_Perturbed   = normalize(g_dir + Binormal * noiseBias);
-            // T                   = T_Perturbed;
+            // vec3 T = normalize(g_dir);
+            vec3 T = computeGlintTangent();
 
             float inBacklit = saturate(dot(-L, V));
 
@@ -486,7 +520,7 @@ void main() {
                                              material.tt > 0.5,
                                              material.trt > 0.5,
                                              material.scatter > 0.5) *
-                            scene.lights[i].color * scene.lights[i].intensity;
+                            scene.lights[i].color * scene.lights[i].intensity * HAIR_GLOBAL_SCALE;
 
             color += lighting;
             // if(transMask.hairCount < 1000000.0)

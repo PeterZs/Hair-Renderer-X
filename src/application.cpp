@@ -69,8 +69,8 @@ void HairViewer::setup() {
     m_scene->add(light);
 
 #ifdef USE_NEURAL_MODELS
-    // load_neural_avatar(
-    //     RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
+    load_neural_avatar(
+        RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
     // load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
     //                    RESOURCES_PATH "models/neural_head_ALVARO.ply",
     //                    "Alvaro",
