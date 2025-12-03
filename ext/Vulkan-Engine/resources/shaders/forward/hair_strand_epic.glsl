@@ -68,8 +68,6 @@ void emitQuadPoint(vec4 origin, vec4 right, float offset, vec3 forward, vec3 nor
     EmitVertex();
 }
 
-
-
 void main() {
 
     // Model space --->>>
@@ -206,48 +204,82 @@ float getOpticalDensity(vec3 worldPos, vec3 lightWorldPos) {
     return decodeScalarFromSHL1(SHL1, dir);
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Special shadow mapping for hair for controlling density
-//////////////////////////////////////////////////////////////////////////
-
-float computeHairShadowCone(vec3 worldPos, vec3 lightDir) {
+float computeHairShadowCone(vec3 worldPos, vec3 lightDir, vec3 physicalAbsorption) {
+    
+    // 1. SETUP DIMENSIONES
     vec3 boundsMin = object.minCoord.xyz;
     vec3 boundsMax = object.maxCoord.xyz;
     vec3 boxSize   = boundsMax - boundsMin;
+    float maxBoxDim = max(boxSize.x, max(boxSize.y, boxSize.z));
 
-    vec3 texPos = (worldPos - boundsMin) / boxSize;
+    ivec3 texDim = textureSize(hairVoxelsDensity, 0);
+    float maxTexDim = float(max(texDim.x, max(texDim.y, texDim.z)));
+    float voxelSizeTexSpace = 1.0 / maxTexDim; 
 
-    float t         = 0.001;
-    float tMax      = 1.0;
-    float sigma     = 0.7;
-    float coneAngle = 0.02;
-    float trans     = 1.0;
+    vec3 startTexPos = (worldPos - boundsMin) / boxSize;
 
-    const int MAX_STEPS = 64;          // drastically fewer now
-    float     step      = 1.0 / 256.0; // start near one voxel
+    // 2. VINCULACIÓN FÍSICA (CRÍTICO)
+    // En lugar de 'sigma = 0.25', derivamos sigma de la física del material.
+    // Usamos el canal que más absorbe (Max) o la media (Dot).
+    // El max asegura que si el pelo es negro en algún canal, la sombra sea densa.
+    float materialSigma = max(physicalAbsorption.r, max(physicalAbsorption.g, physicalAbsorption.b));
+    
+    // Factor de corrección empírico (porque voxel density != path distance pura)
+    // Este número ya no variará tanto entre rubio/moreno, será más estable.
+    float shadowSensibility = 4.0; 
+    float dynamicSigma = materialSigma * shadowSensibility;
 
-    for (int i = 0; i < MAX_STEPS && trans > 0.001; i++)
+    // Configuración del Cono
+    float coneAngle = 0.035; 
+    float minStepWorld = length(boxSize) * voxelSizeTexSpace * 0.5; 
+    
+    // 3. INICIO RAYO
+    float t = minStepWorld * 2.0; 
+    float trans = 1.0;
+    float tMax = 1.75; 
+
+    // LIMITADOR DE PASO (Fix para el corte de sombra)
+    // Nunca avanzar más de un 5% del volumen en un solo paso, aunque el cono sea enorme.
+    float maxStepWorld = maxBoxDim * 0.05; 
+
+    const int MAX_STEPS = 256; 
+
+    for (int i = 0; i < MAX_STEPS && t < tMax && trans > 0.01; i++)
     {
-        float radius = coneAngle * t;
-        float mip    = clamp(log2(max(radius * 256.0, 1e-4)), 0.0, 3.0);
+        vec3 samplePos = startTexPos + ((lightDir * t) / boxSize);
 
-        vec3  samplePos = texPos + lightDir * t;
-        float dens      = textureLod(hairVoxelsDensity, samplePos, mip).r;
+        if (any(lessThan(samplePos, vec3(0))) || any(greaterThan(samplePos, vec3(1)))) {
+            t += minStepWorld * 4.0; 
+            continue; 
+        }
 
-        // exponential attenuation
-        trans *= exp(-dens * sigma * step * 256.0);
+        // --- CÁLCULO DE CONO Y MIP ---
+        float coneRadiusTex = (t / maxBoxDim) * tan(coneAngle);
+        float mipLevel = log2(max(coneRadiusTex, 1e-6) / voxelSizeTexSpace);
+        
+        // ¡FIX IMPORTANTE! 
+        // No dejes que lea Mips superiores a 3.0 si tienes pocos niveles.
+        // El Mip 4 de 256 es 16x16x16 -> Demasiado borroso, la densidad desaparece.
+        mipLevel = clamp(mipLevel, 0.0, 3.0); 
 
-        // exponential step growth
-        t += step;
-        step *= 1.05;
+        float density = textureLod(hairVoxelsDensity, samplePos, mipLevel).r;
 
-        if (t > tMax)
-            break;
+        // --- CÁLCULO DE PASO ---
+        // El paso es el diámetro, PERO lo limitamos con maxStepWorld
+        float stepSize = min(max(minStepWorld, coneRadiusTex * 2.0), maxStepWorld);
+        
+        // --- ACUMULACIÓN FÍSICA ---
+        if (density > 0.001) {
+            // Usamos dynamicSigma (que depende de la melanina)
+            // 'densityScale' sigue siendo necesario para convertir unidades de textura a mundo (aprox 300-500)
+            trans *= exp(-density * dynamicSigma * stepSize * 400.0); 
+        }
+
+        t += stepSize;
     }
 
     return trans;
 }
-
 float computeHairShadowDDA(vec3 worldPos, vec3 lightDir) {
     vec3 boundsMin = object.minCoord.xyz;
     vec3 boundsMax = object.maxCoord.xyz;
@@ -373,21 +405,21 @@ vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap
 float gold_noise(vec2 xy, float seed) {
     return fract(tan(distance(xy * 1.61803398874989484820459, xy) * seed) * xy.x);
 }
-vec3 computeGlintTangent(){
+vec3 computeGlintTangent() {
     // 1. CONFIGURACIÓN BASE
-    float maxGlintStrength = 0.0;   // Cuánto rompe el brillo de cerca (0.0 a 1.0)
+    float maxGlintStrength = 0.0; // Cuánto rompe el brillo de cerca (0.0 a 1.0)
     float glintScale       = 0.0; // Frecuencia del ruido (ajusta según tus UVs)
-    
+
     // 2. CÁLCULO DEL LOD (Distance Fading)
     // Calculamos la distancia de la cámara al píxel
-    float viewDist = length(g_pos); 
-    
+    float viewDist = length(g_pos);
+
     // Definimos un rango de desvanecimiento:
     // - glintStartFade: Distancia donde empieza a desaparecer (ej: 50 cm)
     // - glintEndFade: Distancia donde desaparece totalmente (ej: 2 metros)
     // Ajusta estos valores a la escala de tu escena (asumo unidades en cm o m?)
-    float glintStartFade = 8.0;  
-    float glintEndFade   = 50.0; 
+    float glintStartFade = 8.0;
+    float glintEndFade   = 50.0;
 
     // Calculamos el factor de desvanecimiento (1.0 cerca -> 0.0 lejos)
     float lodFactor = 1.0 - smoothstep(glintStartFade, glintEndFade, viewDist);
@@ -396,10 +428,11 @@ vec3 computeGlintTangent(){
     // Solo calculamos si estamos cerca (optimización)
     vec3 T_Final = normalize(g_dir); // Por defecto es la tangente suave original
 
-    if (lodFactor > 0.001) {
+    if (lodFactor > 0.001)
+    {
         // Generamos el ruido basado en UVs
-        float noiseVal = gold_noise(g_uv * glintScale, 1.0); 
-        
+        float noiseVal = gold_noise(g_uv * glintScale, 1.0);
+
         // Mapeamos a [-1, 1] y aplicamos la fuerza atenuada por la distancia
         float currentStrength = maxGlintStrength * lodFactor;
         float tangentNoise    = (noiseVal * 2.0 - 1.0) * currentStrength;
@@ -407,22 +440,19 @@ vec3 computeGlintTangent(){
         // 4. PERTURBAR TANGENTE
         vec3 N_orig = normalize(g_normal);
         vec3 B_orig = normalize(cross(N_orig, T_Final)); // Binormal
-        
+
         // Rotamos la tangente hacia la binormal
         T_Final = normalize(T_Final + B_orig * tangentNoise);
-
     }
-        return T_Final;
-
+    return T_Final;
 }
-
 
 void main() {
 
     // BSDF setup ............................................................
-    vec3 physicalSigma = getAbsorptionFromMelanin( material.baseColor.x,  material.baseColor.y,  material.baseColor.z);    
+    vec3 physicalSigma = getAbsorptionFromMelanin(material.baseColor.x, material.baseColor.y, material.baseColor.z);
     vec3 epicBaseColor = hairAbsorptionToColor(physicalSigma);
-    bsdf.baseColor = epicBaseColor;
+    bsdf.baseColor     = epicBaseColor;
 
     bsdf.roughness = material.roughness;
     bsdf.metallic  = material.metallic;
@@ -501,10 +531,24 @@ void main() {
 
             if (material.advShadows > 0.0)
             {
-                // float sigma = 0.5; // tweak ~0.3–1.2 depending on density scale
-                // transMask.visibility =  computeHairShadowDDA(g_modelPos, normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz -g_modelPos)) >
-                // 0.0 ? ;
-                transMask.visibility = computeHairShadowCone(g_modelPos, normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz - g_modelPos));
+                transMask.visibility = computeHairShadowCone(g_modelPos,
+                                                             normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz - g_modelPos),
+                                                             physicalSigma 
+                );
+
+                // float rrawCount = 2.0 - getOpticalDensity(g_modelPos, (camera.invView * vec4(scene.lights[i].position, 1.0)).xyz) / max(data.avgFiberLength,
+                // 1e-9); rrawCount *= material.densityBoost; transMask.visibility =  rrawCount;
+
+                // 2. DERIVAS HAIR COUNT DE LA VISIBILIDAD (El truco matemático)
+                // Si V = exp(-Density), entonces Density = -ln(V)
+                // Añadimos un max() para evitar log(0) y un factor de escala para ajustar unidades.
+                float derivedHairCount = -log(max(transMask.visibility, 0.001));
+
+                // Aplicas un factor para convertir "Densidad Óptica" a "Número de Capas" aproximado
+                // Epic suele considerar que 1 unidad de HairCount es una capa de pelo visible.
+                // Ajusta este 1.0/0.7 según tu densidad de voxelización original.
+                float densityScale  = 1.0 / 0.6;
+                transMask.hairCount = derivedHairCount * densityScale;
             }
 
             bsdf          = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
