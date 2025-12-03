@@ -2,7 +2,7 @@
 
     <integrator type="path">
         <!-- Instantiate a path tracer with a max. path length of 8 -->
-        <integer name="max_depth" value="8"/>
+        <integer name="max_depth" value="16"/>
     </integrator>
 
     <sensor type="perspective">
@@ -22,7 +22,7 @@
         </film>
 
         <sampler type="independent">
-            <integer name="sample_count" value="4"/>
+            <integer name="sample_count" value="16"/>
         </sampler>
     </sensor>
 
@@ -70,7 +70,7 @@
     </shape> -->
     
     <emitter type="point">
-        <point name="position" x="15" y="8.0" z="-15.0"/>
+        <point name="position" x="-15" y="8.0" z="15.0"/>
         <!-- <point name="position" x="-5" y="8.0" z="0.0"/> -->
         <rgb name="intensity" value="300.0"/>
     </emitter> 

@@ -70,7 +70,7 @@ Graphics::MaterialUniforms HairEpicMaterial::get_uniforms() const {
 
    
     Graphics::MaterialUniforms uniforms;
-    uniforms.dataSlot1 = {m_usePigmentation ? m_sigma_a : m_baseColor, m_thickness};
+    uniforms.dataSlot1 = { Vec3(m_eumelanine, m_pheomelanine, m_baseColor.r), m_thickness};
     uniforms.dataSlot2 = {m_roughness, m_metallic, m_specular, deg2rad(m_shift)};
     uniforms.dataSlot3 = {m_ior, m_Rpower, m_TTpower, m_TRTpower};
     uniforms.dataSlot4 = {0.0, m_useLegacyAbsorption, m_useSeparableR, m_useBacklit};

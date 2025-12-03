@@ -369,7 +369,17 @@ void main() {
 
     // BSDF setup ............................................................
     //  bsdf.baseColor = material.baseColor;
-    bsdf.baseColor = material.baseColor;
+    // bsdf.baseColor = material.baseColor;
+    // bsdf.baseColor = pow(material.baseColor, vec3(2.2));
+    // bsdf.baseColor = vec3(0.9, 0.7,0.3);
+    // vec3 physicalSigma = getAbsorptionFromMelanin(0.15, 0.3 );
+    // vec3 physicalSigma = getAbsorptionFromMelanin(0.15, 0.3 );
+    vec3 physicalSigma = getAbsorptionFromMelanin( material.baseColor.x,  material.baseColor.y,  material.baseColor.z);    
+    // Convertimos ese Sigma a Color RGB usando la fórmula de Epic.
+    // Este color resultante es el que garantiza que cuando la BSDF haga la inversa,
+    // recupere el 'physicalSigma' correcto.
+    vec3 epicBaseColor = hairAbsorptionToColor(physicalSigma);
+    bsdf.baseColor = epicBaseColor;
 
     bsdf.roughness = material.roughness;
     bsdf.metallic  = material.metallic;
@@ -414,9 +424,20 @@ void main() {
                     shadow = computeHairShadow(scene.lights[i], i, shadowMap, 0.7, g_modelPos, spread, directFraction);
             }
 
-            vec3  L         = normalize(scene.lights[i].position.xyz - g_pos);
-            vec3  V         = normalize(-g_pos);
-            vec3  T         = normalize(g_dir);
+            vec3 L = normalize(scene.lights[i].position.xyz - g_pos);
+            vec3 V = normalize(-g_pos);
+            vec3 T = normalize(g_dir);
+
+            // --- GLINT HACK ---
+            // float noiseVal = fract(sin(dot(g_uv * 100.0, vec2(12.9898, 78.233))) * 43758.5453);
+            // // O usar una textura de ruido azul (mejor calidad)
+            // // float noiseVal = texture(NoiseTex, g_uv * 20.0).r;
+            // float glintStrength = 0.4; // Ajustar a gusto
+            // float noiseBias     = (noiseVal * 2.0 - 1.0) * glintStrength;
+            // vec3  Binormal      = normalize(cross(g_normal, g_dir));
+            // vec3  T_Perturbed   = normalize(g_dir + Binormal * noiseBias);
+            // T                   = T_Perturbed;
+
             float inBacklit = saturate(dot(-L, V));
 
             // Number of traversed strands
@@ -435,7 +456,9 @@ void main() {
             float hLog    = log(1.0 + k * rawCount) / log(1.0 + k);
             float hSmooth = pow(hLog, 0.8); // 0.7–0.9 = softer
 #endif
-            transMask.hairCount = hSmooth;
+            // transMask.hairCount = hSmooth;
+            transMask.hairCount = rawCount;
+            // transMask.hairCount = 4.5;
 
             // transMask.visibility = directFraction < 0.9 ? 0.0: 1.0;
             transMask.visibility = directFraction;
@@ -444,25 +467,25 @@ void main() {
 
             if (material.advShadows > 0.0)
             {
-                float sigma = 0.5; // tweak ~0.3–1.2 depending on density scale
+                // float sigma = 0.5; // tweak ~0.3–1.2 depending on density scale
                 // transMask.visibility =  computeHairShadowDDA(g_modelPos, normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz -g_modelPos)) >
                 // 0.0 ? ;
                 transMask.visibility = computeHairShadowCone(g_modelPos, normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz - g_modelPos));
             }
 
             bsdf          = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
-            vec3 lighting = evalHairBSDF(L,
-                                         V,
-                                         T,
-                                         directFraction,
-                                         NpTex,
-                                         bsdf,
-                                         inBacklit,
-                                         scene.lights[i].area,
-                                         material.r > 0.5,
-                                         material.tt > 0.5,
-                                         material.trt > 0.5,
-                                         material.scatter > 0.5) *
+            vec3 lighting = evalEpicHairBSDF(L,
+                                             V,
+                                             T,
+                                             directFraction,
+                                             NpTex,
+                                             bsdf,
+                                             inBacklit,
+                                             scene.lights[i].area,
+                                             material.r > 0.5,
+                                             material.tt > 0.5,
+                                             material.trt > 0.5,
+                                             material.scatter > 0.5) *
                             scene.lights[i].color * scene.lights[i].intensity;
 
             color += lighting;

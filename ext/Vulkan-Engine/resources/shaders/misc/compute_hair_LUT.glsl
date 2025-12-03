@@ -105,7 +105,7 @@ void main() {
                 const float SamplePdf       = SampleDirection.w;
                 const vec3  L               = SampleDirection.xyz;
 
-                const vec3  BSDFValue       = evalHairBSDF(L, JitteredV, N, OpaqueVisibility, NpTex, bsdf, Backlit, Area, true, true, true, false);
+                const vec3  BSDFValue       = evalEpicHairBSDF(L, JitteredV, N, OpaqueVisibility, NpTex, bsdf, Backlit, Area, true, true, true, false);
                 // const vec3 BSDFValue = texture(NpTex, vec3(0.0,0.0,0.0)).rgb;
                 // const vec3 BSDFValue = vec3(0.0);
 

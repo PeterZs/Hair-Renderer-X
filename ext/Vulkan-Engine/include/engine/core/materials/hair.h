@@ -235,8 +235,8 @@ class HairEpicMaterial : public IMaterial
 {
   protected:
     // Pigment concentrations
-    float m_eumelanine   = 1.3f;
-    float m_pheomelanine = 0.2f;
+    float m_eumelanine   = 0.8f;
+    float m_pheomelanine = 0.3f;
     Vec3  m_sigma_a;
     bool m_usePigmentation = false;
 
@@ -250,7 +250,7 @@ class HairEpicMaterial : public IMaterial
         m_sigma_a.b = m_eumelanine * eumelaninSigmaA.b + m_pheomelanine * pheomelaninSigmaA.b;
     }
 
-    Vec3 m_baseColor = {0.27f, 0.14f, 0.04f};
+    Vec3 m_baseColor = {0.2, 0.2, 0.2};
 
     float m_thickness = 0.003f;
 
@@ -469,18 +469,21 @@ class HairEpicMaterial : public IMaterial
         return m_eumelanine;
     }
     inline void set_eumelanine(float c) {
-        if (!m_usePigmentation)
-            return;
         m_eumelanine = c;
         compute_sigma_a();
+        m_isDirty = true;
+    }
+    inline float get_pigment_scale() const {
+        return m_baseColor.r;
+    }
+    inline void set_pigment_scale(float c) {
+        m_baseColor = Vec3(c);
         m_isDirty = true;
     }
     inline float get_pheomelanine() const {
         return m_pheomelanine;
     }
     inline void set_pheomelanine(float c) {
-        if (!m_usePigmentation)
-            return;
         compute_sigma_a();
         m_pheomelanine = c;
         m_isDirty      = true;

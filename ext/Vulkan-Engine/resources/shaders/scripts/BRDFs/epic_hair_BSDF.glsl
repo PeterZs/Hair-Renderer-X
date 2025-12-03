@@ -11,9 +11,9 @@
 #define DEG2RAD(x) ((x) / 180.0 * PI)
 
 // #define TRANS_MARSHNER
-// #define TRANS_EPIC
-#define TRANS_PHARR
-#define HAIR_REFERENCE 1
+#define TRANS_EPIC
+// #define TRANS_PHARR
+#define HAIR_REFERENCE 0
 
 // Hair reflectance component (R, TT, TRT, Local Scattering, Global Scattering, Multi Scattering,...)
 
@@ -69,7 +69,33 @@ vec3 hairColorToAbsorption(vec3 C) {
     vec3 L = log(max(C, vec3(1e-6))) / D; // protección contra log(0)
 
     return L * L; // evita pow(vec3,vec3)
+
+    // return -log(max(C, vec3(1e-4)));
 }
+
+
+vec3 hairAbsorptionToColor(vec3 A) {
+    const float B = 0.3;
+    const float b2 = B * B;
+    const float b3 = B * b2;
+    const float b4 = b2 * b2;
+    const float b5 = B * b4;
+    const float D = (5.969 - 0.215 * B + 2.532 * b2 - 10.73 * b3 + 5.574 * b4 + 0.245 * b5);
+    
+    // Epic usa: exp(-sqrt(A) * D)
+    // El sqrt aquí se cancela con el L*L de la función inversa
+    return exp(-sqrt(max(A, vec3(0.0))) * D);
+}
+
+
+vec3 getAbsorptionFromMelanin(float m, float r, float scale) {
+    float melanin = -log(max(1.0 - m, 0.0001)) * scale;
+    // float melanin = -log(max(1.0 - m, 0.0001)); 
+    float eumelanin   = melanin * (1.0 - r);
+    float pheomelanin = melanin * r;
+    return eumelanin * vec3(0.506, 0.841, 1.653) + pheomelanin * vec3(0.343, 0.733, 1.924);
+}
+
 
 float g(float theta, float beta, bool bClampBSDFValue) {
     // Clamp beta for the denominator term, as otherwise the Gaussian normalization returns too high value.
@@ -269,30 +295,30 @@ vec3 sampleN(uint p, sampler3D NpTex, HairTempData HairTemp) {
 // Azimuthal Scattering
 // ==========================================================
 vec3 azimuthalScattering(uint p, float Bp, vec3 Color, HairTempData HairTemp, sampler3D NpTex, uvec2 Random) {
-    float Phi = acos(HairTemp.CosPhi);
+    // float Phi = acos(HairTemp.CosPhi);
 
-    float Offset = float(Random.x & 0xffffu) / float(1u << 16);
+    // float Offset = float(Random.x & 0xffffu) / float(1u << 16);
 
-    const uint Num = 64u;
+    // const uint Num = 64u;
 
-    vec3 Np = vec3(0.0);
+    // vec3 Np = vec3(0.0);
 
-    for (uint i = 0u; i < Num; i++)
-    {
-        float h = ((float(i) + Offset) / float(Num)) * 2.0 - 1.0;
+    // for (uint i = 0u; i < Num; i++)
+    // {
+    //     float h = ((float(i) + Offset) / float(Num)) * 2.0 - 1.0;
 
-        Np += attenuation(p, h, Color, HairTemp) * gaussianDetector(Bp, Phi - omega(p, h, HairTemp));
-    }
+    //     Np += attenuation(p, h, Color, HairTemp) * gaussianDetector(Bp, Phi - omega(p, h, HairTemp));
+    // }
 
-    Np *= (2.0 / float(Num));
+    // Np *= (2.0 / float(Num));
 
-    return 0.5 * Np;
+    // return 0.5 * Np;
 
-    // float h = 0.0;
-    // if (p == 2)
-    //     h = sqrt(3.0) * 0.5;
+    float h = 0.0;
+    if (p == 2)
+        h = sqrt(3.0) * 0.5;
 
-    // return attenuation(p, h, Color, HairTemp) * sampleN(p, NpTex, HairTemp);
+    return attenuation(p, h, Color, HairTemp) * sampleN(p, NpTex, HairTemp);
 }
 
 // [d'Eon et al. 2011, "An Energy-Conserving Hair Reflectance Model"]
@@ -587,7 +613,7 @@ EpicHairBSDF computeDualScatteringTerms(const HairTransmittanceMask Transmittanc
 
     // Different variant for managing sefl-occlusion issue for global scattering
     const vec3 GlobalScattering = mix(vec3(1.0), Tf * Sf * df, saturate(HairCount));
-    // const vec3 GlobalScattering =  (Tf - vec3(TransmittanceMask.visibility)) * df * ( PI * df * LocalScattering);
+    // const vec3 GlobalScattering = clamp(Tf - vec3(TransmittanceMask.visibility),0.0,1.0) * df * ( Sf  + LocalScattering);
     // const vec3 GlobalScattering =  clamp(Tf - vec3(TransmittanceMask.visibility),0.0,1.0) * df * Sf;
 
     bsdf.globalScattering = GlobalScattering;
@@ -598,8 +624,7 @@ EpicHairBSDF computeDualScatteringTerms(const HairTransmittanceMask Transmittanc
 
 HairAverageScattering sampleHairLUT(sampler3D LUTTexture, vec3 InAbsorption, float Roughness, float SinViewAngle) {
     const vec3 RemappedAbsorption = fromLinearAbsorption(InAbsorption);
-    // const vec3 RemappedAbsorption = InAbsorption;
-    // const vec3 RemappedAbsorption = vec3(0.4,0.3,0.05);
+    
     const vec2 LUTValue_R = textureLod(LUTTexture, vec3(saturate(abs(SinViewAngle)), saturate(Roughness), saturate(RemappedAbsorption.x)), 0.0).xy;
     const vec2 LUTValue_G = textureLod(LUTTexture, vec3(saturate(abs(SinViewAngle)), saturate(Roughness), saturate(RemappedAbsorption.y)), 0.0).xy;
     const vec2 LUTValue_B = textureLod(LUTTexture, vec3(saturate(abs(SinViewAngle)), saturate(Roughness), saturate(RemappedAbsorption.z)), 0.0).xy;
@@ -617,7 +642,7 @@ evalHairMultipleScattering(const vec3 V, const vec3 L, const vec3 T, HairTransmi
     // const float Backlit = GBuffer.CustomData.z;
 
     // Compute the transmittance based on precompute Hair transmittance LUT
-    
+
     const float                 SinLightAngle     = dot(L, T);
     const HairAverageScattering AverageScattering = sampleHairLUT(HairLUTTexture, bsdf.baseColor, bsdf.roughness, SinLightAngle);
     // const HairAverageScattering AverageScattering;
@@ -691,7 +716,7 @@ vec3 evalHairBSDF(vec3         L,
                   bool         scatter) {
 
 #if HAIR_REFERENCE
-    vec3 S = evalHairRef(bsdf, L, V, N, NpTex, uvec2(0.5,0.5));
+    vec3 S = evalHairRef(bsdf, L, V, N, NpTex, uvec2(0.5, 0.5));
 #else
 
     vec3 bsdfSigma = bsdf.baseColor; // Warp
@@ -785,6 +810,9 @@ vec3 evalHairBSDF(vec3         L,
     if (scatter)
     {
         S = bsdf.globalScattering * (S + bsdf.localScattering) * bsdf.opaqueVisibility;
+        // S = (S + bsdf.localScattering) * bsdf.opaqueVisibility;
+        //  S = bsdf.globalScattering;
+        // S = bsdf.localScattering;
         // Fallback ...
         S += evalKajiyaKayDiffuseAttenuation(bsdf.baseColor, bsdf.metallic, L, V, N, 1.0 - bsdf.opaqueVisibility);
     }
