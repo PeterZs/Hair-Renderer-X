@@ -88,12 +88,12 @@ void HairViewer::setup() {
     //    {9, 6, 3}
 #else
     Mesh* hair = new Mesh();
-    Tools::Loaders::load_3D_file(hair, MESH_PATH + "curly.hair", false);
+    Tools::Loaders::load_3D_file(hair, MESH_PATH + "straight.hair", false);
     hair->set_scale(0.053f);
     hair->set_rotation({90.0, 180.0f, 0.0f});
     // HairDisneyMaterial* hmat = new HairDisneyMaterial();
     HairEpicMaterial* hmat = new HairEpicMaterial();
-    hmat->set_thickness(0.0025f);
+    hmat->set_thickness(0.0015f);
     hair->push_material(hmat);
     hair->set_name("Hair");
 
@@ -132,7 +132,7 @@ void HairViewer::setup() {
     eyes->set_name("Eyes");
     head->add_child(eyes);
 
-    // hmat->set_skull(head);
+    hmat->set_skull(head);
     // head->add_child(hair);
     m_scene->add(head);
     m_scene->add(hair);

@@ -759,9 +759,14 @@ void ObjectExplorerWidget::render() {
                     mat->set_useScatter(useScatter); // Update use scatter
                 }
                 float boost = mat->get_density_boost();
-                if (ImGui::DragFloat("Density Boost", &boost, 0.1f, 0.0f, 100.0f))
+                if (ImGui::DragFloat("Shadow Density", &boost, 0.005f, 0.0f, 1.0f))
                 {
                     mat->set_density_boost(boost); // Update use scatter
+                }
+                float sboost = mat->get_scatter_boost();
+                if (ImGui::DragFloat("Scatter Multiplier", &sboost, 0.1f, 0.1f, 100.0f))
+                {
+                    mat->set_scatter_boost(sboost); 
                 }
 
                 bool separableB = mat->useSeparableR();

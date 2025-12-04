@@ -397,7 +397,6 @@ void ForwardPass::render(Graphics::Frame& currentFrame, Scene* const scene, uint
 
                 // GLOBAL LAYOUT BINDING
                 cmd.bind_descriptor_set(m_descriptors[currentFrame.index].globalDescritor, 0, *shaderPass, {0, 0});
-
                 cmd.draw_geometry(*get_VAO(scene->get_skybox()->get_box()));
             }
         }

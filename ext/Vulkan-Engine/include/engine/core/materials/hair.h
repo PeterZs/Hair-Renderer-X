@@ -235,7 +235,7 @@ class HairEpicMaterial : public IMaterial
 {
   protected:
     // Pigment concentrations
-    float m_eumelanine   = 0.8f;
+    float m_eumelanine   = 0.6f;
     float m_pheomelanine = 0.3f;
     Vec3  m_sigma_a;
     bool m_usePigmentation = false;
@@ -252,7 +252,7 @@ class HairEpicMaterial : public IMaterial
 
     Vec3 m_baseColor = Vec3{0.35f};
 
-    float m_thickness = 0.003f;
+    float m_thickness = 0.002f;
 
     bool  m_R        = true; // Reflection
     float m_Rpower   = 1.0f;
@@ -268,7 +268,8 @@ class HairEpicMaterial : public IMaterial
     float m_shift = 5.2f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float m_ior   = 1.55f;
 
-    float m_densityBoost = 1.5f;
+    float m_densityBoost = 0.03f;
+    float m_scatterBoost = 60.0f;
 
     // Query
     bool m_useSeparableR       = true;
@@ -399,6 +400,13 @@ class HairEpicMaterial : public IMaterial
     }
     void set_density_boost(float met) {
         m_densityBoost = met;
+        m_isDirty      = true;
+    }
+    float get_scatter_boost() const {
+        return m_scatterBoost;
+    }
+    void set_scatter_boost(float met) {
+        m_scatterBoost = met;
         m_isDirty      = true;
     }
 
