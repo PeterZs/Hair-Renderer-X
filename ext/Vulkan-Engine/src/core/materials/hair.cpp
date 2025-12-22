@@ -68,14 +68,15 @@ Graphics::MaterialUniforms HairEpicMaterial::get_uniforms() const {
     //-----------------
     auto deg2rad = [](float deg) { return deg / 180.0 * 3.14159265358979323846; };
 
-   
     Graphics::MaterialUniforms uniforms;
-    uniforms.dataSlot1 = { Vec3(m_eumelanine, m_pheomelanine, m_baseColor.r), m_thickness};
+    uniforms.dataSlot1 = {Vec3(m_eumelanine, m_pheomelanine, m_tintColor.r), m_thickness};
     uniforms.dataSlot2 = {m_roughness, m_metallic, m_specular, deg2rad(m_shift)};
     uniforms.dataSlot3 = {m_ior, m_Rpower, m_TTpower, m_TRTpower};
     uniforms.dataSlot4 = {0.0, m_useLegacyAbsorption, m_useSeparableR, m_useBacklit};
     uniforms.dataSlot5 = {m_clampBSDFValue, m_R, m_TT, m_TRT};
     uniforms.dataSlot6 = {m_useScatter, m_scatterBoost, m_advancedShadowing, m_densityBoost};
+    uniforms.dataSlot7 = {m_useGlints, m_rootDarkening, m_tipBleaching, m_tipFalloff};
+    uniforms.dataSlot8 = {m_variabilty, m_tintColor.r, m_tintColor.g, m_tintColor.b};
 
     return uniforms;
 }

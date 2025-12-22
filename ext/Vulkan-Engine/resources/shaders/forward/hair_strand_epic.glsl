@@ -5,13 +5,14 @@
 // Input
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
-layout(location = 2) in vec3 uv;
+layout(location = 2) in vec2 uv;
 layout(location = 3) in vec3 tangent;
 layout(location = 4) in vec3 color;
 
 // Output
 layout(location = 0) out vec3 v_color;
 layout(location = 1) out vec3 v_tangent;
+layout(location = 2) out vec2 v_uv;
 
 void main() {
 
@@ -19,6 +20,7 @@ void main() {
 
     v_tangent = normalize(mat3(transpose(inverse(object.model))) * tangent);
     v_color   = color;
+    v_uv      = uv;
 }
 
 #shader geometry
@@ -32,6 +34,7 @@ layout(triangle_strip, max_vertices = 4) out;
 // Input
 layout(location = 0) in vec3 v_color[];
 layout(location = 1) in vec3 v_tangent[];
+layout(location = 2) in vec2 v_uv[];
 
 // Uniforms
 layout(set = 1, binding = 1) uniform MaterialUniforms {
@@ -50,8 +53,9 @@ layout(location = 5) out vec3 g_dir;
 layout(location = 6) out vec3 g_modelDir;
 layout(location = 7) out vec3 g_color;
 layout(location = 8) out vec3 g_origin;
+layout(location = 9) out float g_coverage;
 
-void emitQuadPoint(vec4 origin, vec4 right, float offset, vec3 forward, vec3 normal, vec2 uv, int id) {
+void emitQuadPoint(vec4 origin, vec4 right, float offset, vec3 forward, vec3 normal, vec2 uv, int id, float coverage) {
 
     vec4 newPos   = origin + right * offset; // Model space
     gl_Position   = camera.viewProj * newPos;
@@ -64,11 +68,14 @@ void emitQuadPoint(vec4 origin, vec4 right, float offset, vec3 forward, vec3 nor
     g_normal      = normalize(mat3(transpose(inverse(camera.view))) * normal);
     g_modelNormal = normal;
     g_origin      = (camera.view * origin).xyz;
+    g_coverage    = coverage;
 
     EmitVertex();
 }
 
 void main() {
+
+    const vec2 VIEWPORT_SIZE = vec2(camera.screenExtent);
 
     // Model space --->>>
 
@@ -89,12 +96,38 @@ void main() {
 
     //<<<----
 
+    float finalAlpha = 1.0;
+    // vec4 p0_clip = camera.viewProj * gl_in[0].gl_Position;
+    // vec4 p1_clip = camera.viewProj * gl_in[1].gl_Position;
+
+    // // Un punto desplazado por el grosor real (en el startPoint)
+    // vec4 p0_offset_clip = camera.viewProj * (gl_in[0].gl_Position + right0 * material.thickness);
+
+    // vec2 p0_screen = (p0_clip.xy / p0_clip.w) * VIEWPORT_SIZE * 0.5;
+    // vec2 p0_offset_screen = (p0_offset_clip.xy / p0_offset_clip.w) * VIEWPORT_SIZE * 0.5;
+    // float projectedWidthPx = length(p0_screen - p0_offset_screen);
+
+    // float minPixels = 1.0;
+    // float scaleFactor = 1.0;
+
+    // if (projectedWidthPx < minPixels && projectedWidthPx > 0.001) {
+    //     scaleFactor = minPixels / projectedWidthPx;
+
+    //     // Compensamos con transparencia (Conservación de energía)
+    //     finalAlpha = 1.0 / scaleFactor;
+    // }
+
+    // // Aplicamos el escalado al grosor físico
+    // float correctedHalfLength = (material.thickness * 0.5) * scaleFactor;
+
+    //<<<----
+
     float halfLength = material.thickness * 0.5;
 
-    emitQuadPoint(startPoint, right0, halfLength, dir0, normal0, vec2(1.0, 0.0), 0);
-    emitQuadPoint(endPoint, right1, halfLength, dir1, normal1, vec2(1.0, 1.0), 1);
-    emitQuadPoint(startPoint, -right0, halfLength, dir0, normal0, vec2(0.0, 0.0), 0);
-    emitQuadPoint(endPoint, -right1, halfLength, dir1, normal1, vec2(0.0, 1.0), 1);
+    emitQuadPoint(startPoint, right0, halfLength, dir0, normal0, v_uv[0], 0, finalAlpha);
+    emitQuadPoint(endPoint, right1, halfLength, dir1, normal1, v_uv[1], 1, finalAlpha);
+    emitQuadPoint(startPoint, -right0, halfLength, dir0, normal0, v_uv[0], 0, finalAlpha);
+    emitQuadPoint(endPoint, -right1, halfLength, dir1, normal1, v_uv[1], 1, finalAlpha);
 }
 
 #shader fragment
@@ -119,6 +152,7 @@ layout(location = 5) in vec3 g_dir;
 layout(location = 6) in vec3 g_modelDir;
 layout(location = 7) in vec3 g_color;
 layout(location = 8) in vec3 g_origin;
+layout(location = 9) in float g_coverage;
 
 // Uniforms
 layout(set = 0, binding = 2) uniform sampler2DArray shadowMap;
@@ -163,6 +197,14 @@ layout(set = 1, binding = 1) uniform MaterialUniforms {
     float scatterKnob;
     float advShadows;
     float shadowKnob;
+
+    float useGlints;
+    float rootDarkening;
+    float tipBleaching;
+    float tipFalloff;
+
+    float variability;
+    vec3 tintColor;
 }
 material;
 
@@ -212,58 +254,60 @@ void buildBasis(vec3 T, vec3 V, out vec3 N, out vec3 B) {
     // 1. Binormal (B): Es el vector que va "a lo ancho" de la cinta en pantalla.
     // Es perpendicular a la hebra (T) y a la mirada (V).
     B = normalize(cross(T, V));
-    
+
     // 2. Normal (N): Es el vector que apunta "hacia fuera" del cilindro.
     // Es perpendicular a la Binormal y a la Tangente.
     N = normalize(cross(B, T));
 }
 float hash31(vec3 p3) {
-	p3  = fract(p3 * .1031);
+    p3 = fract(p3 * .1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
 vec3 computeMicroTangent(vec3 T, vec3 V, vec3 worldPos) {
-    
+
     // --- 1. RECONSTRUIR BASE VIRTUAL ---
     vec3 N, B;
-    buildBasis(T, V, N, B); // <-- Aquí fabricamos la Normal que te falta
+    buildBasis(T, V, N, B);
 
     // --- 2. CONFIGURACIÓN ---
-    float glintStrength = 8.5;    // Fuerza
-    float glintScale    = 500.0; // Frecuencia (Escamas muy pequeñas)
-    float anisotropy    = 0.1;   // Estiramiento (0.05 = muy estirado a lo largo)
+    // float glintStrength = material.TTpower;    // Fuerza (3)
+    // // float glintScale    = 50.0; // Frecuencia (Escamas muy pequeñas)
+    // float glintScale    = material.TRTpower; // Frecuencia 150 (Escamas muy pequeñas)
+    // float anisotropy    = material.Rpower;   // Estiramiento (0.01 = muy estirado a lo largo)
+    float glintStrength = 0.2;  // Fuerza (3)
+    float glintScale    = 50.0; // Frecuencia 150 (Escamas muy pequeñas)
+    float anisotropy    = 0.01; // Estiramiento (0.01 = muy estirado a lo largo)
 
-    // --- 3. LOD (Anti-Aliasing) ---
-    // Derivada de posición: ¿Cuánto terreno cubrimos por pixel?
-    float pixelSize = length(fwidth(worldPos)); 
-    // Si el pixel es más grande que el ruido, apagamos el efecto suavemente
-    float lodFade = 1.0 - smoothstep(0.0, 1.0, pixelSize * glintScale * 0.5);
-    
-    if (lodFade < 0.01) return T; // Optimización
+    // // --- 3. LOD (Anti-Aliasing) ---
+    // // Derivada de posición: ¿Cuánto terreno cubrimos por pixel?
+    // float pixelSize = length(fwidth(worldPos));
+    // // Si el pixel es más grande que el ruido, apagamos el efecto suavemente
+    // float lodFade = 1.0 - smoothstep(0.0, 1.0, pixelSize * glintScale * 0.5);
+
+    // if (lodFade < 0.01) return T;
 
     // --- 4. COORDENADAS DE RUIDO ---
     // Proyectamos la posición del mundo sobre nuestro cilindro virtual
     float u = dot(worldPos, T); // Largo de la hebra
     float v = dot(worldPos, B); // Ancho de la hebra
-    
+
     // Estiramos para crear anisotropía (escamas)
     vec3 noiseCoord = vec3(u * anisotropy, v, 0.0) * glintScale;
 
     // --- 5. RUIDO ---
-    // Usamos un hash simple rápido (o tu gold_noise si prefieres)
-    float n = hash31(floor(noiseCoord)); 
-    
+    float n = hash31(floor(noiseCoord));
+
     // Mapear [0,1] -> [-1, 1]
     float perturbation = (n * 2.0 - 1.0);
 
     // --- 6. APLICAR ---
     // Movemos la tangente hacia la Binormal (ancho) y un poco hacia la Normal (profundidad)
     // para dar sensación 3D.
-    vec3 T_micro = normalize(T + (B * perturbation) * glintStrength * lodFade);
+    vec3 T_micro = normalize(T + (B * perturbation) * glintStrength);
 
     return T_micro;
 }
-
 
 float computeHairShadowCone(vec3 worldPos, vec3 lightDir, vec3 physicalAbsorption, float densityScale) {
 
@@ -376,12 +420,34 @@ vec3 computeHairShadow(LightUniform light, int lightId, sampler2DArray shadowMap
     return transDirect * 0.5;
 }
 
+void applyNaturalVariation(inout float m, inout float r, float uv_length, float variation) {
+
+    float bleachFactor = pow(uv_length, material.tipFalloff);
+    float darkenactor = pow(1.0 - uv_length, material.tipFalloff);
+
+    m += material.rootDarkening *darkenactor; 
+    m -= material.tipBleaching * bleachFactor;       
+
+    float strandVariationStrength = material.variability; 
+
+    float randomOffset = (variation * 2.0 - 1.0) * strandVariationStrength;
+    m += randomOffset;
+    r += randomOffset;
+
+    m = clamp(m, 0.0, 1.0);
+    r = clamp(r, 0.0, 1.0);
+}
+
 void main() {
 
     // BSDF setup ............................................................
-    vec3 physicalSigma = getAbsorptionFromMelanin(material.baseColor.x, material.baseColor.y, material.baseColor.z);
+    float melanin = material.baseColor.x; 
+    float redness = material.baseColor.y;
+    applyNaturalVariation(melanin, redness, g_uv.x, g_uv.y);
+    vec3 physicalSigma = getAbsorptionFromMelanin(melanin, redness, material.baseColor.z);
     vec3 epicBaseColor = hairAbsorptionToColor(physicalSigma);
-    bsdf.baseColor     = epicBaseColor;
+
+    bsdf.baseColor = epicBaseColor;
 
     bsdf.roughness = material.roughness;
     bsdf.metallic  = material.metallic;
@@ -405,11 +471,12 @@ void main() {
     bsdf.localScattering  = vec3(0.0);
     bsdf.globalScattering = vec3(1.0);
 
-    vec3  V         = normalize(-g_pos);
+    vec3 V = normalize(-g_pos);
     vec3 T = normalize(g_dir);
-    T = computeMicroTangent(T, V, g_modelPos);
+    if (material.useGlints > 0.5)
+        T = computeMicroTangent(T, V, g_modelPos);
 
-   // T = computeMicroTangent(T, N_orig, g_modelPos);
+    // T = computeMicroTangent(T, N_orig, g_modelPos);
 
     // vec3  T         = computeGlintTangent();
 
@@ -432,11 +499,10 @@ void main() {
                     shadow = computeHairShadow(scene.lights[i], i, shadowMap, 0.7, g_modelPos, spread, directFraction);
             }
 
-            vec3 L = normalize(scene.lights[i].position.xyz - g_pos);
+            vec3  L         = normalize(scene.lights[i].position.xyz - g_pos);
             float inBacklit = saturate(dot(-L, V));
 
             HairTransmittanceMask transMask;
-            transMask.visibility = directFraction;
             if (material.advShadows > 0.0)
             {
                 transMask.visibility = computeHairShadowCone(
@@ -488,6 +554,7 @@ void main() {
     //    vec3 color = vec3(41.0,0.0,0.0);
 
     fragColor = vec4(color, 1.0);
+    // fragColor = vec4(g_uv.x, 0.0,0.0, 1.0);
     // check whether result is higher than some threshold, if so, output as bloom threshold color
     float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722));
     if (brightness > 1.0)

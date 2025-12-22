@@ -1,7 +1,7 @@
 #include "application.h"
 #include <filesystem>
 
-// #define USE_NEURAL_MODELS
+#define USE_NEURAL_MODELS
 
 void HairViewer::init(Systems::RendererSettings settings) {
     m_window = new WindowGLFW("Hair Viewer", 1024, 1024);
@@ -69,22 +69,22 @@ void HairViewer::setup() {
     m_scene->add(light);
 
 #ifdef USE_NEURAL_MODELS
-    load_neural_avatar(
-        RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
-    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_ALVARO.ply",
-    //                    RESOURCES_PATH "models/neural_head_ALVARO.ply",
+    // load_neural_avatar(
+    //     RESOURCES_PATH "models/neural_hair_PABLO.ply", RESOURCES_PATH "models/neural_head_PABLO.ply", "Pablo", {0.32, 0.12, 1.0}, Vec3(0.0), -175.0f);
+    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONY.ply",
+    //                    RESOURCES_PATH "models/neural_head_TONY.ply",
     //                    "Alvaro",
     //                    {0.8, 0.2, 4.0},
     //                    {-5.5f, 0.1f, -0.4f},
     //                    -35.0f);
-    // load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONO.ply",
-    //                    RESOURCES_PATH "models/neural_head_TONO.ply",
-    //                    "Antonio",
-    //                    {0.4, 0.2, 24.0},
-    //                    //    {5.5f, 0.0f, 0.0f},
-    //                    {0.0f, 0.0f, 0.0f},
-    //                    -320.0f,
-    //                    false);
+    load_neural_avatar(RESOURCES_PATH "models/neural_hair_TONO.ply",
+                       RESOURCES_PATH "models/neural_head_TONO.ply",
+                       "Antonio",
+                       {0.4, 0.2, 24.0},
+                       //    {5.5f, 0.0f, 0.0f},
+                       {0.0f, 0.0f, 0.0f},
+                       -320.0f,
+                       true);
     //    {9, 6, 3}
 #else
     Mesh* hair = new Mesh();

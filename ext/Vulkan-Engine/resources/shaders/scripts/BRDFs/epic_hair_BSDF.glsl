@@ -89,6 +89,8 @@ vec3 hairAbsorptionToColor(vec3 A) {
 }
 
 
+
+
 vec3 getAbsorptionFromMelanin(float m, float r, float scale) {
     float melanin = -log(max(1.0 - m, 0.0001)) * scale;
     // float melanin = -log(max(1.0 - m, 0.0001)); 
@@ -449,6 +451,9 @@ vec3 evalEpicHairBSDF(vec3         L,
     const float sinThetaL = clamp(dot(N, L), -1.0, 1.0);
     const float sinThetaV = clamp(dot(N, V), -1.0, 1.0);
     float       cosThetaD = cos(0.5 * abs(asin(sinThetaV) - asin(sinThetaL)));
+
+    float viewPerpendicularity = sqrt(max(0.0, 1.0 - sinThetaV * sinThetaV));
+    float grazingTerm = viewPerpendicularity;
     // cosThetaD = abs( cosThetaD ) < 0.01 ? 0.01 : cosThetaD;
 
     // PHI
@@ -521,7 +526,7 @@ vec3 evalEpicHairBSDF(vec3         L,
         // float Np = 0.71 * exp( -1.65 * Pow2(Phi - PI) );
         float Np = exp(-3.65 * cosPhi - 3.98);
 
-        S += Mp * Np * Fp * Tp * backlit;
+        S += Mp * Np * Fp * Tp * backlit * grazingTerm;
     }
 
     // TRT
@@ -540,7 +545,8 @@ vec3 evalEpicHairBSDF(vec3         L,
         // float Np = 0.75 * exp( Phi / s ) / ( s * Pow2( 1 + exp( Phi / s ) ) );
         float Np = exp(17.0 * cosPhi - 16.78);
 
-        S += Mp * Np * Fp * Tp;
+        S += Mp * Np * Fp * Tp * grazingTerm;
+        
     }
 #endif
 

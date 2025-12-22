@@ -261,12 +261,14 @@ void ForwardPass::setup_shader_passes() {
     hairStrandPass2->settings.descriptorSetLayoutIDs = {{GLOBAL_LAYOUT, true}, {OBJECT_LAYOUT, true}, {OBJECT_TEXTURE_LAYOUT, true}};
     hairStrandPass2->settings.pushConstants          = {Graphics::PushConstant(SHADER_STAGE_FRAGMENT, sizeof(Vec4))};
     hairStrandPass2->graphicSettings.attributes      = {
-        {POSITION_ATTRIBUTE, true}, {NORMAL_ATTRIBUTE, false}, {UV_ATTRIBUTE, false}, {TANGENT_ATTRIBUTE, true}, {COLOR_ATTRIBUTE, true}};
+        {POSITION_ATTRIBUTE, true}, {NORMAL_ATTRIBUTE, false}, {UV_ATTRIBUTE, true}, {TANGENT_ATTRIBUTE, true}, {COLOR_ATTRIBUTE, true}};
     hairStrandPass2->graphicSettings.dynamicStates      = dynamicStates;
     hairStrandPass2->graphicSettings.samples            = samples;
-    hairStrandPass2->graphicSettings.sampleShading      = false;
-    hairStrandPass2->graphicSettings.blendAttachments   = blendAttachments;
+    hairStrandPass2->graphicSettings.sampleShading      = true;
+    hairStrandPass2->graphicSettings.blendAttachments   = {Init::color_blend_attachment_state(true), Init::color_blend_attachment_state(true)};
     hairStrandPass2->graphicSettings.topology           = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    hairStrandPass2->graphicSettings.alphaToCoverage    = false;
+    hairStrandPass2->graphicSettings.alphaToOne    = false;
     m_shaderPasses[IMaterial::Type::HAIR_STR_EPIC_TYPE] = hairStrandPass2;
 
 #endif

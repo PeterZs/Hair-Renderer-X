@@ -626,66 +626,87 @@ void VKFW::Tools::Loaders::load_hair(Core::Mesh* const mesh, const char* fileNam
     vertices.reserve(header.point_count * 3);
     std::vector<uint32_t> indices;
 
-    size_t index   = 0;
-    size_t pointId = 0;
+    size_t index                  = 0;
+    size_t pointId                = 0;
+    float  totalFiberLengthGlobal = 0.0f;
     for (size_t hair = 0; hair < header.hair_count; hair++) // Hair Fiber
     {
-        glm::vec3 color        = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
-        size_t    max_segments = segments ? segments[hair] : header.d_segments;
+        size_t    max_segments   = segments ? segments[hair] : header.d_segments;
+        float     strandRandomID = ((float)rand()) / RAND_MAX;
+        glm::vec3 color          = {strandRandomID, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+
+        std::vector<float> dists;
+        dists.reserve(max_segments + 1);
+        dists.push_back(0.0f); // La raíz está a distancia 0
+        float  totalStrandLength = 0.0f;
+        size_t tempPointId       = pointId; // Us
+
         for (size_t i = 0; i < max_segments; i++)
         {
-            vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]},
-                                {0.0f, 0.0f, 0.0f},
-                                {dirs[pointId], dirs[pointId + 1], dirs[pointId + 2]},
-                                {0.0f, 0.0f},
+            // P0 (Inicio del segmento)
+            float x0 = points[tempPointId];
+            float y0 = points[tempPointId + 1];
+            float z0 = points[tempPointId + 2];
+
+            // P1 (Fin del segmento / Inicio del siguiente)
+            float x1 = points[tempPointId + 3];
+            float y1 = points[tempPointId + 4];
+            float z1 = points[tempPointId + 5];
+
+            float segLen = sqrt(pow(x1 - x0, 2) + pow(y1 - y0, 2) + pow(z1 - z0, 2));
+            totalStrandLength += segLen;
+            dists.push_back(totalStrandLength);
+
+            tempPointId += 3; // Avanzamos 3 floats (1 punto)
+        }
+        totalFiberLengthGlobal += totalStrandLength;
+
+        for (size_t i = 0; i < max_segments; i++)
+        {
+            // Calcular UV.x normalizado (0.0 a 1.0)
+            // Para el vértice de inicio del segmento (i)
+            float u_start = (totalStrandLength > 0.0f) ? (dists[i] / totalStrandLength) : 0.0f;
+
+            // Para el vértice de fin del segmento (i+1)
+            // Nota: En tu bucle original duplicabas vértices para líneas separadas.
+            // Aquí añades el vértice 'start' del segmento.
+
+            vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, // Pos
+                                {0.0f, 0.0f, 0.0f},                                          // Normal (no usada/calculada luego?)
+                                {dirs[pointId], dirs[pointId + 1], dirs[pointId + 2]},       // Tangente
+                                {u_start, strandRandomID},                                   // UV: x=RootTip, y=RandomID
                                 color});
+
             indices.push_back(index);
             indices.push_back(index + 1);
             index++;
-            pointId += 3;
+            pointId += 3; // Avanzar cursor real
         }
-        vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]},
+
+        float u_end = 1.0f; // La punta siempre es 1.0
+
+        vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, // Pos final
                             {0.0f, 0.0f, 0.0f},
-                            {dirs[pointId], dirs[pointId + 1], dirs[pointId + 2]},
-                            {0.0f, 0.0f},
+                            {dirs[pointId], dirs[pointId + 1], dirs[pointId + 2]}, // Tangente final
+                            {u_end, strandRandomID},                               // UV
                             color});
-        pointId += 3;
+
+        pointId += 3; // Avanzar cursor real pasado el último punto
         index++;
     }
 
     Core::Geometry* g = new Core::Geometry();
     g->fill(vertices, indices);
 
-     pointId          = 0;
-    float  totalFiberLength = 0.0f;
-
-    for (size_t hair = 0; hair < header.hair_count; hair++)
-    {
-        size_t max_segments = segments ? segments[hair] : header.d_segments;
-
-        float hairLength = 0.0f;
-
-        for (size_t i = 0; i < max_segments; i++)
-        {
-            // Read p0 and p1 directly from hair file points
-            glm::vec3 p0(points[pointId + 0], points[pointId + 1], points[pointId + 2]);
-            glm::vec3 p1(points[pointId + 3], points[pointId + 4], points[pointId + 5]);
-
-            hairLength += glm::length(p1 - p0);
-
-            pointId += 3;
-        }
-
-        totalFiberLength += hairLength;
-
-        // last vertex for this hair
-        pointId += 3;
-    }
-    float avgFiberLength = totalFiberLength / header.hair_count;
+    // Calcular media global
+    float avgFiberLength = (header.hair_count > 0) ? (totalFiberLengthGlobal / header.hair_count) : 0.0f;
     g->set_avg_fiber_length(avgFiberLength);
 
     mesh->push_geometry(g);
     mesh->set_file_route(std::string(fileName));
+
+  
+    
 }
 
 void VKFW::Tools::Loaders::load_texture(Core::ITexture* const texture, const std::string fileName, TextureFormatType textureFormat, bool asyncCall) {

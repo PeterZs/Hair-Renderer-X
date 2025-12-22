@@ -62,7 +62,7 @@ void PipelineBuilder::build_graphic_pipeline(VkPipeline&                        
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
         vertexInputInfo.pVertexAttributeDescriptions    = attributeDescriptions.data();
     }
-    
+
     // Viewport
     VkViewport viewport = Init::viewport(extent);
     VkRect2D   scissor;
@@ -88,11 +88,14 @@ void PipelineBuilder::build_graphic_pipeline(VkPipeline&                        
     VkPipelineMultisampleStateCreateInfo multisampling = Init::multisampling_state_create_info(settings.samples);
     multisampling.sampleShadingEnable                  = settings.samples > VK_SAMPLE_COUNT_1_BIT && settings.sampleShading ? VK_TRUE : VK_FALSE;
     multisampling.minSampleShading                     = .2f;
+    multisampling.alphaToCoverageEnable                = settings.alphaToCoverage;
+    multisampling.alphaToOneEnable                     = settings.alphaToOne;
 
     // Blending
     VkPipelineColorBlendStateCreateInfo colorBlending = Init::color_blend_create_info();
     colorBlending.attachmentCount                     = static_cast<uint32_t>(settings.blendAttachments.size());
     colorBlending.pAttachments                        = settings.blendAttachments.data();
+    
 
     // Dynamic states
     VkPipelineDynamicStateCreateInfo dynamicState{};

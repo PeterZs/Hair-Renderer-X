@@ -654,21 +654,21 @@ void ObjectExplorerWidget::render() {
                 // }
                 // if (usePigments)
                 // {
-                    float eu = mat->get_eumelanine();
-                    if (ImGui::DragFloat("Melanine", &eu, 0.01f, 0.0f, 1.0f))
-                    {
-                        mat->set_eumelanine(eu);
-                    }
-                    float ph = mat->get_pheomelanine();
-                    if (ImGui::DragFloat("Redness", &ph, 0.01f, 0.0f, 1.0f))
-                    {
-                        mat->set_pheomelanine(ph);
-                    }
-                    float cc = mat->get_pigment_scale();
-                    if (ImGui::DragFloat("Concentrarion", &cc, 0.01f, 0.0f, 1.0f))
-                    {
-                        mat->set_pigment_scale(cc);
-                    }
+                float eu = mat->get_eumelanine();
+                if (ImGui::DragFloat("Melanine", &eu, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_eumelanine(eu);
+                }
+                float ph = mat->get_pheomelanine();
+                if (ImGui::DragFloat("Redness", &ph, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_pheomelanine(ph);
+                }
+                float cc = mat->get_pigment_scale();
+                if (ImGui::DragFloat("Concentrarion", &cc, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_pigment_scale(cc);
+                }
                 // } else
                 // {
                 //     // Vec3 sigma = mat->get_absorption();
@@ -766,7 +766,7 @@ void ObjectExplorerWidget::render() {
                 float sboost = mat->get_scatter_boost();
                 if (ImGui::DragFloat("Scatter Multiplier", &sboost, 0.1f, 0.1f, 100.0f))
                 {
-                    mat->set_scatter_boost(sboost); 
+                    mat->set_scatter_boost(sboost);
                 }
 
                 bool separableB = mat->useSeparableR();
@@ -794,6 +794,33 @@ void ObjectExplorerWidget::render() {
                 {
                     mat->set_adv_shadows(shadowsAdv);
                 }
+                bool glionts = mat->use_glints();
+                if (ImGui::Checkbox("Glints", &glionts))
+                {
+                    mat->use_glints(glionts);
+                }
+
+                float darkening = mat->get_root_darkening();
+                if (ImGui::DragFloat("Root Darkening", &darkening, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_root_darkening(darkening);
+                }
+                float tipfalloff = mat->get_tip_falloff();
+                if (ImGui::DragFloat("Root Falloff", &tipfalloff, 0.1f, 0.0f, 20.0f))
+                {
+                    mat->set_tip_falloff(tipfalloff);
+                }
+                float bleaching = mat->get_tip_bleaching();
+                if (ImGui::DragFloat("Tip Bleaching", &bleaching, 0.01f, 0.0f, 1.0f))
+                {
+                    mat->set_tip_bleaching(bleaching);
+                }
+                float varrr = mat->get_variabilty();
+                if (ImGui::DragFloat("Color Variation", &varrr, 0.05f, 0.0f, 1.0f))
+                {
+                    mat->set_variabilty(varrr);
+                }
+              
             }
             if (model->get_material(i)->get_type() == IMaterial::Type::HAIR_STR_TYPE)
             {

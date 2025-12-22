@@ -32,6 +32,8 @@ struct GraphicPipelineSettings {
     VkFrontFace                                      drawOrder        = VK_FRONT_FACE_CLOCKWISE;
     VkSampleCountFlagBits                            samples          = VK_SAMPLE_COUNT_1_BIT;
     bool                                             sampleShading    = true;
+    bool                                             alphaToCoverage  = false;
+    bool                                             alphaToOne       = false;
     std::vector<VkPipelineColorBlendAttachmentState> blendAttachments = {Init::color_blend_attachment_state(false)};
     bool                                             depthTest        = true;
     bool                                             depthWrite       = true;
@@ -45,10 +47,7 @@ struct GraphicPipelineSettings {
 /Pipeline data and creation wrapper
 */
 namespace PipelineBuilder {
-void build_pipeline_layout(VkPipelineLayout& layout,
-                           VkDevice          device,
-                           DescriptorPool    descriptorManager,
-                           PipelineSettings& settings);
+void build_pipeline_layout(VkPipelineLayout& layout, VkDevice device, DescriptorPool descriptorManager, PipelineSettings& settings);
 
 void build_graphic_pipeline(VkPipeline&                                  pipeline,
                             VkPipelineLayout&                            layout,
@@ -58,10 +57,7 @@ void build_graphic_pipeline(VkPipeline&                                  pipelin
                             GraphicPipelineSettings&                     settings,
                             std::vector<VkPipelineShaderStageCreateInfo> shaderStages);
 
-void build_compute_pipeline(VkPipeline&                     pipeline,
-                            VkPipelineLayout&               layout,
-                            VkDevice                        device,
-                            VkPipelineShaderStageCreateInfo computeStage);
+void build_compute_pipeline(VkPipeline& pipeline, VkPipelineLayout& layout, VkDevice device, VkPipelineShaderStageCreateInfo computeStage);
 }; // namespace PipelineBuilder
 
 } // namespace Graphics

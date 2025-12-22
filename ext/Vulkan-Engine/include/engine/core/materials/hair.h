@@ -238,7 +238,7 @@ class HairEpicMaterial : public IMaterial
     float m_eumelanine   = 0.6f;
     float m_pheomelanine = 0.3f;
     Vec3  m_sigma_a;
-    bool m_usePigmentation = false;
+    bool  m_usePigmentation = false;
 
     inline void compute_sigma_a() {
 
@@ -250,7 +250,7 @@ class HairEpicMaterial : public IMaterial
         m_sigma_a.b = m_eumelanine * eumelaninSigmaA.b + m_pheomelanine * pheomelaninSigmaA.b;
     }
 
-    Vec3 m_baseColor = Vec3{0.35f};
+    Vec3 m_tintColor = Vec3{0.35f};
 
     float m_thickness = 0.002f;
 
@@ -268,8 +268,13 @@ class HairEpicMaterial : public IMaterial
     float m_shift = 5.2f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float m_ior   = 1.55f;
 
-    float m_densityBoost = 0.03f;
+    float m_densityBoost = 0.015f;
     float m_scatterBoost = 60.0f;
+
+    float m_rootDarkening = 0.1f;
+    float m_tipBleaching  = 0.0f;
+    float m_tipFalloff    = 8.0f;
+    float m_variabilty    = 0.2f;
 
     // Query
     bool m_useSeparableR       = true;
@@ -278,6 +283,7 @@ class HairEpicMaterial : public IMaterial
     bool m_clampBSDFValue      = false;
     bool m_useScatter          = false;
     bool m_advancedShadowing   = true;
+    bool m_useGlints           = true;
 
     Mesh* m_skull = nullptr;
 
@@ -300,18 +306,18 @@ class HairEpicMaterial : public IMaterial
   public:
     HairEpicMaterial(Vec3 baseColor = {0.35f, 0.35f, 0.35f})
         : IMaterial(HAIR_STR_EPIC_TYPE)
-        , m_baseColor(baseColor) {
+        , m_tintColor(baseColor) {
     }
     HairEpicMaterial(Vec3 baseColor, MaterialSettings params)
         : IMaterial(HAIR_STR_EPIC_TYPE, params)
-        , m_baseColor(baseColor) {
+        , m_tintColor(baseColor) {
     }
 
-    inline Vec3 get_base_color() const {
-        return m_baseColor;
+    inline Vec3 get_tint_color() const {
+        return m_tintColor;
     }
-    inline void set_base_color(Vec3 c) {
-        m_baseColor = c;
+    inline void set_tint_color(Vec3 c) {
+        m_tintColor = c;
         m_isDirty   = true;
     }
 
@@ -482,11 +488,11 @@ class HairEpicMaterial : public IMaterial
         m_isDirty = true;
     }
     inline float get_pigment_scale() const {
-        return m_baseColor.r;
+        return m_tintColor.r;
     }
     inline void set_pigment_scale(float c) {
-        m_baseColor = Vec3(c);
-        m_isDirty = true;
+        m_tintColor = Vec3(c);
+        m_isDirty   = true;
     }
     inline float get_pheomelanine() const {
         return m_pheomelanine;
@@ -496,12 +502,43 @@ class HairEpicMaterial : public IMaterial
         m_pheomelanine = c;
         m_isDirty      = true;
     }
-     inline void use_pigmentation(bool op) {
+    inline void use_pigmentation(bool op) {
         m_usePigmentation = op;
     }
     inline bool use_pigmentation() {
         return m_usePigmentation;
         m_isDirty = true;
+    }
+    inline void use_glints(bool op) {
+        m_useGlints = op;
+    }
+    inline bool use_glints() {
+        return m_useGlints;
+        m_isDirty = true;
+    }
+    inline float get_root_darkening() const {
+        return m_rootDarkening;
+    }
+    inline float get_tip_bleaching() const {
+        return m_tipBleaching;
+    }
+    inline float get_tip_falloff() const {
+        return m_tipFalloff;
+    }
+    inline void set_root_darkening(float darkening) {
+        m_rootDarkening = darkening;
+    }
+    inline void set_tip_bleaching(float bleaching) {
+        m_tipBleaching = bleaching;
+    }
+    inline void set_tip_falloff(float falloff) {
+        m_tipFalloff = falloff;
+    }
+    inline float get_variabilty() const {
+        return m_variabilty;
+    }
+    inline void set_variabilty(float variabilty) {
+        m_variabilty = variabilty;
     }
 };
 

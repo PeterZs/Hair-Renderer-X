@@ -44,8 +44,7 @@ void hair_loaders::load_neural_hair(Core::Mesh* const mesh,
                 std::cout << "\t[ply_header] element: " << e.name << " (" << e.size << ")" << std::endl;
                 for (const auto& p : e.properties)
                 {
-                    std::cout << "\t[ply_header] \tproperty: " << p.name
-                              << " (type=" << tinyply::PropertyTable[p.propertyType].str << ")";
+                    std::cout << "\t[ply_header] \tproperty: " << p.name << " (type=" << tinyply::PropertyTable[p.propertyType].str << ")";
                     if (p.isList)
                         std::cout << " (list_type=" << tinyply::PropertyTable[p.listType].str << ")";
                     std::cout << std::endl;
@@ -62,17 +61,13 @@ void hair_loaders::load_neural_hair(Core::Mesh* const mesh,
         { std::cerr << "tinyply exception: " << e.what() << std::endl; }
 
         try
-        {
-            normals = file.request_properties_from_element("vertex", {"nx", "ny", "nz"});
-        } catch (const std::exception& e)
+        { normals = file.request_properties_from_element("vertex", {"nx", "ny", "nz"}); } catch (const std::exception& e)
         {
             if (verbose)
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
         }
         try
-        {
-            normals = file.request_properties_from_element("vertex", {"normal_x", "normal_y", "normal_z"});
-        } catch (const std::exception& e)
+        { normals = file.request_properties_from_element("vertex", {"normal_x", "normal_y", "normal_z"}); } catch (const std::exception& e)
         {
             if (verbose)
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
@@ -86,8 +81,7 @@ void hair_loaders::load_neural_hair(Core::Mesh* const mesh,
         if (verbose)
         {
             const float parsingTime = static_cast<float>(readTimer.get()) / 1000.f;
-            std::cout << "\tparsing " << size_mb << "mb in " << parsingTime << " seconds [" << (size_mb / parsingTime)
-                      << " MBps]" << std::endl;
+            std::cout << "\tparsing " << size_mb << "mb in " << parsingTime << " seconds [" << (size_mb / parsingTime) << " MBps]" << std::endl;
 
             if (positions)
                 std::cout << "\tRead " << positions->count << " total vertices " << std::endl;
@@ -102,12 +96,15 @@ void hair_loaders::load_neural_hair(Core::Mesh* const mesh,
         std::vector<unsigned int> indices;
         // std::vector<unsigned int> rootsIndices;
 
+        const int VERTEX_PER_STRAND = 100;
+
         if (positions)
         {
             // rootsIndices.push_back(0); // First index is certainly a root
             const float* posData  = reinterpret_cast<const float*>(positions->buffer.get());
             const float* normData = reinterpret_cast<const float*>(normals->buffer.get());
-            glm::vec3    color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+            glm::vec3    color    = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+            float        randomID = ((float)rand()) / RAND_MAX;
             for (size_t i = 0; i < positions->count - 1; i++)
             {
                 float     x   = posData[i * 3];
@@ -127,9 +124,14 @@ void hair_loaders::load_neural_hair(Core::Mesh* const mesh,
                 glm::vec3 nextPos = {nextX, nextY, nextZ};
                 glm::vec3 tangent = glm::normalize(nextPos - pos);
 
-                vertices.push_back({pos, normal, tangent, {0.0f, 0.0f}, color});
+                int       localIndex  = i % VERTEX_PER_STRAND; // 0 a 99
+                int       strandIndex = i / VERTEX_PER_STRAND; // 0, 1, 2...
+                float     v_coord     = (float)localIndex / (float)(VERTEX_PER_STRAND - 1);
+                glm::vec2 uv          = {v_coord, randomID};
+
+                vertices.push_back({pos, normal, tangent, uv, color});
                 if (i == positions->count - 2)
-                    vertices.push_back({nextPos, normal, tangent, {0.0f, 0.0f}, color});
+                    vertices.push_back({nextPos, normal, tangent, uv, color});
                 if (voxels.size() < 800)
                     voxels.push_back({pos, 0.01f});
 
@@ -141,13 +143,15 @@ void hair_loaders::load_neural_hair(Core::Mesh* const mesh,
                     indices.push_back(i + 1);
                 } else
                 {
-                    // voxels.push_back(Graphics::Voxel(pos, 0.05f));
-                    vertices.back().tangent = Vec3(0.0);
-                    color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+                    size_t lastIdx = vertices.size() - 1;
+                    if (lastIdx > 0)
+                        vertices[lastIdx].tangent = vertices[lastIdx - 1].tangent;
+                    color    = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+                    randomID = ((float)rand()) / RAND_MAX;
                 }
             }
         }
-      
+
         Core::Geometry* g = new Core::Geometry();
         g->fill(vertices, indices);
         g->fill_voxel_array(voxels);
