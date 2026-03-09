@@ -92,37 +92,27 @@ vec3 hairAbsorptionToColor(vec3 A) {
 
 
 vec3 getAbsorptionFromMelanin(float m, float r, float scale) {
-    float melanin = -log(max(1.0 - m, 0.0001)) * scale;
-    // float melanin = -log(max(1.0 - m, 0.0001)); 
-    float eumelanin   = melanin * (1.0 - r);
-    float pheomelanin = melanin * r;
-    return eumelanin * vec3(0.506, 0.841, 1.653) + pheomelanin * vec3(0.343, 0.733, 1.924);
+   // Safety clamp
+    float m_safe = clamp(m, 0.0001, 1.0);
+
+    float base_melanin = -log(max(1.0 - m_safe, 0.0001)) * 0.35;
+
+    float density_boost = 1.0 + (r * 1.2);
+    float total_melanin = base_melanin * density_boost;
+
+    float eumelanin = total_melanin * (1.0 - r);
+    float pheomelanin = total_melanin * r;
+
+    
+    // Eumelanina (Marrón Estándar)
+    vec3 eu_color = vec3(0.506, 0.841, 1.653);
+
+    // Feomelanina (Rojo "Deep Ginger" Tweaked)
+    vec3 pheo_color = vec3(0.150, 0.800, 2.500);
+
+    // 5. Combinación Lineal
+    return (eumelanin * eu_color) + (pheomelanin * pheo_color);
 }
-
-// vec3 getAbsorptionFromEpicSliders(float m, float r) {
-//     // 1. Curva de respuesta del slider (Artist Friendly)
-//     // Evita que 0.1 sea ya negro.
-//     // Epic usa internamente curvas parecidas a pow(m, 2.0) o escalas logarítmicas suaves.
-//     float adjustedMelanin = pow(m, 2.0); 
-
-//     // 2. Conversión a Física (Beer-Lambert puro)
-//     // El 0.0001 evita log(0).
-//     float rawAbs = -log(max(1.0 - adjustedMelanin, 0.0001));
-
-//     // 3. FACTOR DE ESCALA (Tu "Concentration Scale")
-//     // Este 0.12 es el "número mágico" que alinea la física con el ojo humano.
-//     // Con 0.12:
-//     // - m=0.15 -> Rubio
-//     // - m=0.50 -> Castaño
-//     // - m=1.00 -> Negro
-//     float effectiveMelanin = rawAbs * 0.12; 
-
-//     // 4. Separación en Eumelanina y Feomelanina
-//     float eumelanin   = effectiveMelanin * (1.0 - r);
-//     float pheomelanin = effectiveMelanin * r;
-
-//     return eumelanin * vec3(0.506, 0.841, 1.653) + pheomelanin * vec3(0.343, 0.733, 1.924);
-// }
 
 
 float g(float theta, float beta, bool bClampBSDFValue) {
@@ -485,7 +475,7 @@ vec3 evalEpicHairBSDF(vec3         L,
         float       Mp        = g(sinThetaL + sinThetaV - shiftR, beta[0] * betaScale, bsdf.clampBSDFValue);
         float       Np        = 0.25 * cosHalfPhi;
         float       Fp        = fresnel(sqrt(saturate(0.5 + 0.5 * VoL)), n);
-        S += vec3(Mp * Np * Fp * (bsdf.specular * 2.0) * mix(1, backlit, saturate(-VoL)));
+        S += vec3(Mp * Np * Fp * (bsdf.specular * 2.0) * mix(1, 0.0, saturate(-VoL)));
     }
 
     // // TT
@@ -506,7 +496,7 @@ vec3 evalEpicHairBSDF(vec3         L,
         float Fp = pow2(1.0 - f);
         vec3  Tp = vec3(0.0);
 
-        if (bsdf.useLegacyAbsorption)
+        if (bsdf.useLegacyAbsorption) 
         {
 
             Tp = pow(abs(bsdf.baseColor), vec3(0.5 * sqrt(1.0 - pow2(h * a)) / cosThetaD));
@@ -526,7 +516,7 @@ vec3 evalEpicHairBSDF(vec3         L,
         // float Np = 0.71 * exp( -1.65 * Pow2(Phi - PI) );
         float Np = exp(-3.65 * cosPhi - 3.98);
 
-        S += Mp * Np * Fp * Tp * backlit * grazingTerm;
+        S += Mp * Np * Fp * Tp  * grazingTerm;
     }
 
     // TRT

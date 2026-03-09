@@ -327,8 +327,7 @@ float computeHairShadowCone(vec3 worldPos, vec3 lightDir, vec3 physicalAbsorptio
 
     // Factor de corrección empírico (porque voxel density != path distance pura)
     // Este número ya no variará tanto entre rubio/moreno, será más estable.
-    float shadowSensibility = 4.0;
-    float dynamicSigma      = materialSigma * shadowSensibility;
+    float dynamicSigma      = materialSigma ;
 
     float coneAngle    = 0.035;
     float minStepWorld = length(boxSize) * voxelSizeTexSpace * 0.5;
@@ -339,32 +338,42 @@ float computeHairShadowCone(vec3 worldPos, vec3 lightDir, vec3 physicalAbsorptio
     float tMax  = 1.75;
 
     // Nunca avanzar más de un 5% del volumen en un solo paso, aunque el cono sea enorme.
-    float maxStepWorld = maxBoxDim * 0.05;
+    float maxStepWorld = maxBoxDim * 0.1;
 
-    const int MAX_STEPS = 128;
-    for (int i = 0; i < MAX_STEPS && t < tMax && trans > 0.01; i++)
+    const int MAX_STEPS = 64;
+    for (int i = 0; i < MAX_STEPS &&  trans > 0.01; i++)
     {
+        // 1. Calcular posición en textura [0..1]
         vec3 samplePos = startTexPos + ((lightDir * t) / boxSize);
 
-        if (any(lessThan(samplePos, vec3(0))) || any(greaterThan(samplePos, vec3(1))))
+        // 2. CHECK DE SALIDA: Si salimos del volumen, no hay más pelo que ocluya.
+        if (any(lessThan(samplePos, vec3(0.0))) || any(greaterThan(samplePos, vec3(1.0))))
         {
-            t += minStepWorld * 4.0;
-            continue;
+            break; 
         }
 
-        float coneRadiusTex = (t / maxBoxDim) * tan(coneAngle);
-        float mipLevel      = log2(max(coneRadiusTex, 1e-6) / voxelSizeTexSpace);
-        mipLevel            = clamp(mipLevel, 0.0, 3.0);
+        // 3. RADIOS SEPARADOS (Mundo vs Textura)
+        float coneRadiusWorld = t * tan(coneAngle);            // Radio físico
+        float coneRadiusTex   = coneRadiusWorld / maxBoxDim;   // Radio normalizado para el MIP
 
+        // 4. MIP LEVEL
+        float mipLevel = log2(max(coneRadiusTex, 1e-6) / voxelSizeTexSpace);
+        mipLevel = clamp(mipLevel, 0.0, 3.0);
+
+        // 5. SAMPLEO
         float density = textureLod(hairVoxelsDensity, samplePos, mipLevel).r;
 
-        float stepSize = min(max(minStepWorld, coneRadiusTex * 2.0), maxStepWorld);
+        // 6. TAMAÑO DEL PASO EN UNIDADES DE MUNDO
+        // Avanzamos el diámetro del cono (Radius * 2), pero limitándolo por los min/max.
+        float stepSize = clamp(coneRadiusWorld * 2.0, minStepWorld, maxStepWorld);
 
+        // 7. BEER-LAMBERT
         if (density > 0.001)
         {
             trans *= exp(-density * dynamicSigma * stepSize * densityScale);
         }
 
+        // 8. AVANZAR
         t += stepSize;
     }
 
@@ -506,14 +515,14 @@ void main() {
             if (material.advShadows > 0.0)
             {
                 transMask.visibility = computeHairShadowCone(
-                    g_modelPos, normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz - g_modelPos), physicalSigma, material.shadowKnob * 1000);
+                    g_modelPos, normalize((camera.invView * vec4(scene.lights[i].position, 1.0)).xyz - g_modelPos), physicalSigma, material.shadowKnob );
             }
             float derivedHairCount = -log(max(transMask.visibility, 0.001));
             // Aplicas un factor para convertir "Densidad Óptica" a "Número de Capas" aproximado
             // Epic suele considerar que 1 unidad de HairCount es una capa de pelo visible.
             // Ajusta este 1.0/0.7 según tu densidad de voxelización original.
             // float densityScale  = 1.0 / 0.8;
-            transMask.hairCount = derivedHairCount * material.scatterKnob;
+            transMask.hairCount = derivedHairCount * material.scatterKnob * 1000.0;
 
             bsdf          = evalHairMultipleScattering(V, L, T, transMask, hairLUT, bsdf);
             vec3 lighting = evalEpicHairBSDF(L,

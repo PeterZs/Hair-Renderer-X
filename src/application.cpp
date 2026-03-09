@@ -1,7 +1,7 @@
 #include "application.h"
 #include <filesystem>
 
-#define USE_NEURAL_MODELS
+// #define USE_NEURAL_MODELS
 
 void HairViewer::init(Systems::RendererSettings settings) {
     m_window = new WindowGLFW("Hair Viewer", 1024, 1024);
@@ -108,8 +108,9 @@ void HairViewer::setup() {
     // hair2->set_active(false);
 
     Mesh* head = new Mesh();
-    Tools::Loaders::load_3D_file(head, MESH_PATH + "woman2.ply", false);
-    head->set_rotation({0.0, 0.0f, 180.0f});
+    Tools::Loaders::load_3D_file(head, MESH_PATH + "head.ply", false);
+     head->set_scale(0.053f);
+    head->set_rotation({90.0, 180.0f, 0.0f});
     auto     headMat    = new PhysicallyBasedMaterial();
     Texture* headAlbedo = new Texture();
     Tools::Loaders::load_texture(headAlbedo, TEXTURE_PATH + "head.png");
@@ -132,7 +133,7 @@ void HairViewer::setup() {
     eyes->set_name("Eyes");
     head->add_child(eyes);
 
-    hmat->set_skull(head);
+    // hmat->set_skull(head);
     // head->add_child(hair);
     m_scene->add(head);
     m_scene->add(hair);

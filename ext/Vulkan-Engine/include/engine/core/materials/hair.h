@@ -268,20 +268,20 @@ class HairEpicMaterial : public IMaterial
     float m_shift = 5.2f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float m_ior   = 1.55f;
 
-    float m_densityBoost = 0.015f;
-    float m_scatterBoost = 60.0f;
+    float m_densityBoost = 1.0f;
+    float m_scatterBoost = 1.0f;
 
     float m_rootDarkening = 0.1f;
     float m_tipBleaching  = 0.0f;
     float m_tipFalloff    = 8.0f;
-    float m_variabilty    = 0.2f;
+    float m_variabilty    = 0.1f;
 
     // Query
     bool m_useSeparableR       = true;
     bool m_useLegacyAbsorption = false;
     bool m_useBacklit          = false;
     bool m_clampBSDFValue      = false;
-    bool m_useScatter          = false;
+    bool m_useScatter          = true;
     bool m_advancedShadowing   = true;
     bool m_useGlints           = true;
 
